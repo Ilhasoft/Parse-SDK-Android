@@ -748,15 +748,14 @@ public class ParseFile implements Parcelable {
 
   @Override
   public void writeToParcel(Parcel dest, int flags) {
+    if (this.state == null || getUrl() == null) {
+      throw new IllegalStateException("Unable to parcel unsaved ParseFile.");
+    }
     dest.writeParcelable(this.state, flags);
-    dest.writeByteArray(this.data);
-    dest.writeSerializable(this.file);
   }
 
   protected ParseFile(Parcel in) {
     this.state = in.readParcelable(ParseFile.State.class.getClassLoader());
-    this.data = in.createByteArray();
-    this.file = (File) in.readSerializable();
   }
 
   public static final Creator<ParseFile> CREATOR = new Creator<ParseFile>() {
