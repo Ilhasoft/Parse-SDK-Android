@@ -99,8 +99,8 @@ public class ParseFileTest {
     assertEquals("content_type", parseFile.getState().mimeType());
   }
 
-  @Test
-  public void testParcelable() throws Exception {
+  @Test(expected = IllegalStateException.class)
+  public void testParcelableData() throws Exception {
     String name = "name";
     byte[] data = "hello".getBytes();
     String contentType = "content_type";
@@ -108,29 +108,31 @@ public class ParseFileTest {
     ParseFile parseFile = new ParseFile(name, data, contentType);
     Parcel parcel = Parcel.obtain();
     parseFile.writeToParcel(parcel, parseFile.describeContents());
+
+    ParseFile.CREATOR.createFromParcel(parcel);
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testParcelableUnsavedFile() throws Exception {
+    String name = "name";
+    File file = temporaryFolder.newFile(name);
+    String contentType = "content_type";
+
+    ParseFile parseFile = new ParseFile(file, contentType);
+    Parcel parcel = Parcel.obtain();
+    parseFile.writeToParcel(parcel, parseFile.describeContents());
+
+    ParseFile.CREATOR.createFromParcel(parcel);
+  }
+
+  @Test
+  public void testParcelableUrl() throws Exception {
+    ParseFile parseFile = new ParseFile(new ParseFile.State.Builder().url("http://example.com").build());
+    Parcel parcel = Parcel.obtain();
+    parseFile.writeToParcel(parcel, parseFile.describeContents());
     parcel.setDataPosition(0);
 
     ParseFile createdFromParcel = ParseFile.CREATOR.createFromParcel(parcel);
-    assertEquals(name, createdFromParcel.getName());
-    assertEquals(contentType, createdFromParcel.getState().mimeType());
-    assertTrue(createdFromParcel.isDirty());
-
-    parseFile = new ParseFile(data);
-    parcel = Parcel.obtain();
-    parseFile.writeToParcel(parcel, parseFile.describeContents());
-    parcel.setDataPosition(0);
-
-    createdFromParcel = ParseFile.CREATOR.createFromParcel(parcel);
-    assertEquals("file", createdFromParcel.getName()); // Default
-    assertEquals(null, createdFromParcel.getState().mimeType());
-    assertTrue(createdFromParcel.isDirty());
-
-    parseFile = new ParseFile(new ParseFile.State.Builder().url("http://example.com").build());
-    parcel = Parcel.obtain();
-    parseFile.writeToParcel(parcel, parseFile.describeContents());
-    parcel.setDataPosition(0);
-
-    createdFromParcel = ParseFile.CREATOR.createFromParcel(parcel);
     assertEquals("http://example.com", createdFromParcel.getUrl());
     assertFalse(createdFromParcel.isDirty());
   }
