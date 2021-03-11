@@ -1,12 +1,10 @@
 # Parse SDK Android KTX
 Kotlin extension support for Parse Android
 
-## Setup
+## Dependency
 
-### Installation
 After including JitPack:
-
-```groovy
+```gradle
 dependencies {
     implementation "com.github.parse-community.Parse-SDK-Android:ktx:latest.version.here"
 }
@@ -35,6 +33,68 @@ class Cat : ParseObject() {
         set(value) = putOrRemove(KEY_AGE, value)
 }
 
+```
+
+## Property Delegation
+
+> "There are certain common kinds of properties, that, though we can implement them manually every time we need them, would be very nice to implement once and for all, and put into a library."
+
+The text quoted above is the best explanation anyone could pass us, we use property delegation for the properties of our ParseObject, this prevents us having to write very much boilerplate.
+
+### Without property delegation:
+
+```kotlin
+@ParseClassName("Cat")
+class Cat : ParseObject() {
+
+    companion object {
+        const val KEY_NAME = "name"
+    }
+
+    var name: String
+        get() = getString(KEY_NAME)
+        set(value) = put(KEY_NAME, value)
+
+}
+```
+
+### With property delegation:
+
+```kotlin
+@ParseClassName("Cat")
+class Cat : ParseObject() {
+
+    var name: String by stringAttribute() // That's it
+    var legs: Int by intAttribute("cat-legs")
+
+}
+```
+
+The `stringAttribute` is a property delegate, and we have many other specialized types and also for generic types.
+
+This causes us to not have to write get/set and besides, it removed the get/put boilerplate which is a must to map our classes with the Parse collections.
+
+## ParseQuery extensions
+
+Using Property Delegates will allow you to use a more secure way of creating queries.
+
+If is needed to rename some property of a ParseObject, it is only necessary to use the IDE refactoring tool, that your queries will be automatically updated, which is not the case if hard coded strings are used.
+
+```kotlin
+@ParseClassName("Cat")
+class Cat : ParseObject() {
+
+    var age by intAttribute()
+
+}
+
+val query = ParseQuery.getQuery(Cat::class.java)
+// Use this syntax
+query.whereEqualTo(Cat::name, 1)
+// instead of
+query.whereEqualTo("age", 1)
+// or
+query.whereEqualTo(Cat::age.name, 1)
 ```
 
 ## Contributing

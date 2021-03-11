@@ -11,8 +11,8 @@ package com.parse;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -36,10 +36,10 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 
-import bolts.Capture;
-import bolts.Continuation;
-import bolts.Task;
-import bolts.TaskCompletionSource;
+import com.parse.boltsinternal.Capture;
+import com.parse.boltsinternal.Continuation;
+import com.parse.boltsinternal.Task;
+import com.parse.boltsinternal.TaskCompletionSource;
 
 /**
  * The {@code ParseObject} is a local representation of data that can be saved and retrieved from
@@ -67,11 +67,11 @@ public class ParseObject implements Parcelable {
     /*
   REST JSON Keys
   */
-    private static final String KEY_OBJECT_ID = "objectId";
+    public static final String KEY_OBJECT_ID = "objectId";
+    public static final String KEY_CREATED_AT = "createdAt";
+    public static final String KEY_UPDATED_AT = "updatedAt";
     private static final String KEY_CLASS_NAME = "className";
     private static final String KEY_ACL = "ACL";
-    private static final String KEY_CREATED_AT = "createdAt";
-    private static final String KEY_UPDATED_AT = "updatedAt";
     /*
   Internal JSON Keys - Used to store internal data when persisting {@code ParseObject}s locally.
   */
@@ -545,7 +545,7 @@ public class ParseObject implements Parcelable {
      * because it batches the requests.
      *
      * @param objects The objects to delete.
-     * @return A {@link bolts.Task} that is resolved when deleteAll completes.
+     * @return A {@link Task} that is resolved when deleteAll completes.
      */
     public static <T extends ParseObject> Task<Void> deleteAllInBackground(final List<T> objects) {
         return ParseUser.getCurrentSessionTokenAsync().onSuccessTask(new Continuation<String, Task<Void>>() {
@@ -826,7 +826,7 @@ public class ParseObject implements Parcelable {
      * to using saveAll, unless your code is already running from a background thread.
      *
      * @param objects The objects to save.
-     * @return A {@link bolts.Task} that is resolved when saveAll completes.
+     * @return A {@link Task} that is resolved when saveAll completes.
      */
     public static <T extends ParseObject> Task<Void> saveAllInBackground(final List<T> objects) {
         return ParseUser.getCurrentUserAsync().onSuccessTask(new Continuation<ParseUser, Task<String>>() {
@@ -882,7 +882,7 @@ public class ParseObject implements Parcelable {
      * Fetches all the objects that don't have data in the provided list in the background.
      *
      * @param objects The list of objects to fetch.
-     * @return A {@link bolts.Task} that is resolved when fetchAllIfNeeded completes.
+     * @return A {@link Task} that is resolved when fetchAllIfNeeded completes.
      */
     public static <T extends ParseObject> Task<List<T>> fetchAllIfNeededInBackground(
             final List<T> objects) {
@@ -967,7 +967,8 @@ public class ParseObject implements Parcelable {
         }
 
         final ParseQuery<T> query = ParseQuery.<T>getQuery(className)
-                .whereContainedIn(KEY_OBJECT_ID, objectIds);
+                .whereContainedIn(KEY_OBJECT_ID, objectIds)
+                .setLimit(objectIds.size());
         return toAwait.continueWithTask(new Continuation<Void, Task<List<T>>>() {
             @Override
             public Task<List<T>> then(Task<Void> task) {
@@ -1008,7 +1009,7 @@ public class ParseObject implements Parcelable {
      * Fetches all the objects in the provided list in the background.
      *
      * @param objects The list of objects to fetch.
-     * @return A {@link bolts.Task} that is resolved when fetch completes.
+     * @return A {@link Task} that is resolved when fetch completes.
      */
     public static <T extends ParseObject> Task<List<T>> fetchAllInBackground(final List<T> objects) {
         return fetchAllAsync(objects, false);
@@ -1089,7 +1090,7 @@ public class ParseObject implements Parcelable {
      *
      * @param name    the name
      * @param objects the objects to be pinned
-     * @return A {@link bolts.Task} that is resolved when pinning all completes.
+     * @return A {@link Task} that is resolved when pinning all completes.
      * @see #unpinAllInBackground(String, java.util.List)
      */
     public static <T extends ParseObject> Task<Void> pinAllInBackground(final String name,
@@ -1203,7 +1204,7 @@ public class ParseObject implements Parcelable {
      * {@link #createWithoutData(Class, String)} and then call {@link #fetchFromLocalDatastore()} on it.
      *
      * @param objects the objects to be pinned
-     * @return A {@link bolts.Task} that is resolved when pinning all completes.
+     * @return A {@link Task} that is resolved when pinning all completes.
      * @see #unpinAllInBackground(java.util.List)
      * @see #DEFAULT_PIN
      */
@@ -1245,7 +1246,7 @@ public class ParseObject implements Parcelable {
      *
      * @param name    the name
      * @param objects the objects
-     * @return A {@link bolts.Task} that is resolved when unpinning all completes.
+     * @return A {@link Task} that is resolved when unpinning all completes.
      * @see #pinAllInBackground(String, java.util.List)
      */
     public static <T extends ParseObject> Task<Void> unpinAllInBackground(String name,
@@ -1290,7 +1291,7 @@ public class ParseObject implements Parcelable {
      * Removes the objects and every object they point to in the local datastore, recursively.
      *
      * @param objects the objects
-     * @return A {@link bolts.Task} that is resolved when unpinning all completes.
+     * @return A {@link Task} that is resolved when unpinning all completes.
      * @see #pinAllInBackground(java.util.List)
      * @see #DEFAULT_PIN
      */
@@ -1325,7 +1326,7 @@ public class ParseObject implements Parcelable {
      * Removes the objects and every object they point to in the local datastore, recursively.
      *
      * @param name the name
-     * @return A {@link bolts.Task} that is resolved when unpinning all completes.
+     * @return A {@link Task} that is resolved when unpinning all completes.
      * @see #pinAll(String, java.util.List)
      */
     public static Task<Void> unpinAllInBackground(String name) {
@@ -1364,7 +1365,7 @@ public class ParseObject implements Parcelable {
     /**
      * Removes the objects and every object they point to in the local datastore, recursively.
      *
-     * @return A {@link bolts.Task} that is resolved when unpinning all completes.
+     * @return A {@link Task} that is resolved when unpinning all completes.
      * @see #pinAllInBackground(java.util.List, SaveCallback)
      * @see #DEFAULT_PIN
      */
@@ -2191,7 +2192,7 @@ public class ParseObject implements Parcelable {
      * Saves this object to the server in a background thread. This is preferable to using {@link #save()},
      * unless your code is already running from a background thread.
      *
-     * @return A {@link bolts.Task} that is resolved when the save completes.
+     * @return A {@link Task} that is resolved when the save completes.
      */
     public final Task<Void> saveInBackground() {
         return ParseUser.getCurrentUserAsync().onSuccessTask(new Continuation<ParseUser, Task<String>>() {
@@ -2356,7 +2357,7 @@ public class ParseObject implements Parcelable {
      * saves to be silently  discarded until the connection can be re-established, and the queued
      * objects can be saved.
      *
-     * @return A {@link bolts.Task} that is resolved when the save completes.
+     * @return A {@link Task} that is resolved when the save completes.
      */
     public final Task<Void> saveEventually() {
         if (!isDirty()) {
@@ -2526,7 +2527,7 @@ public class ParseObject implements Parcelable {
      * {@link #saveEventually()} will cause old instructions to be silently discarded until the
      * connection can be re-established, and the queued objects can be saved.
      *
-     * @return A {@link bolts.Task} that is resolved when the delete completes.
+     * @return A {@link Task} that is resolved when the delete completes.
      */
     public final Task<Void> deleteEventually() {
         final ParseRESTCommand command;
@@ -2704,7 +2705,7 @@ public class ParseObject implements Parcelable {
      * Fetches this object with the data from the server in a background thread. This is preferable to
      * using fetch(), unless your code is already running from a background thread.
      *
-     * @return A {@link bolts.Task} that is resolved when fetch completes.
+     * @return A {@link Task} that is resolved when fetch completes.
      */
     public final <T extends ParseObject> Task<T> fetchInBackground() {
         return ParseUser.getCurrentSessionTokenAsync().onSuccessTask(new Continuation<String, Task<T>>() {
@@ -2736,7 +2737,7 @@ public class ParseObject implements Parcelable {
      * fetches this object with the data from the server in a background thread. This is preferable to
      * using {@link #fetchIfNeeded()}, unless your code is already running from a background thread.
      *
-     * @return A {@link bolts.Task} that is resolved when fetch completes.
+     * @return A {@link Task} that is resolved when fetch completes.
      */
     public final <T extends ParseObject> Task<T> fetchIfNeededInBackground() {
         if (isDataAvailable()) {
@@ -2858,7 +2859,7 @@ public class ParseObject implements Parcelable {
      * Deletes this object on the server in a background thread. This is preferable to using
      * {@link #delete()}, unless your code is already running from a background thread.
      *
-     * @return A {@link bolts.Task} that is resolved when delete completes.
+     * @return A {@link Task} that is resolved when delete completes.
      */
     public final Task<Void> deleteInBackground() {
         return ParseUser.getCurrentSessionTokenAsync().onSuccessTask(new Continuation<String, Task<Void>>() {
@@ -3702,7 +3703,7 @@ public class ParseObject implements Parcelable {
      * {@link #createWithoutData(Class, String)} and then call {@link #fetchFromLocalDatastore()} on
      * it.
      *
-     * @return A {@link bolts.Task} that is resolved when pinning completes.
+     * @return A {@link Task} that is resolved when pinning completes.
      * @see #unpinInBackground(String)
      */
     public Task<Void> pinInBackground(String name) {
@@ -3752,7 +3753,7 @@ public class ParseObject implements Parcelable {
      * {@link #createWithoutData(Class, String)} and then call {@link #fetchFromLocalDatastore()} on
      * it.
      *
-     * @return A {@link bolts.Task} that is resolved when pinning completes.
+     * @return A {@link Task} that is resolved when pinning completes.
      * @see #unpinInBackground()
      * @see #DEFAULT_PIN
      */
@@ -3789,7 +3790,7 @@ public class ParseObject implements Parcelable {
     /**
      * Removes the object and every object it points to in the local datastore, recursively.
      *
-     * @return A {@link bolts.Task} that is resolved when unpinning completes.
+     * @return A {@link Task} that is resolved when unpinning completes.
      * @see #pinInBackground(String)
      */
     public Task<Void> unpinInBackground(String name) {
@@ -3819,7 +3820,7 @@ public class ParseObject implements Parcelable {
     /**
      * Removes the object and every object it points to in the local datastore, recursively.
      *
-     * @return A {@link bolts.Task} that is resolved when unpinning completes.
+     * @return A {@link Task} that is resolved when unpinning completes.
      * @see #pinInBackground()
      * @see #DEFAULT_PIN
      */
@@ -4076,7 +4077,7 @@ public class ParseObject implements Parcelable {
                 objectId = state.objectId();
                 createdAt = state.createdAt();
                 updatedAt = state.updatedAt();
-                availableKeys = Collections.synchronizedSet(state.availableKeys());
+                availableKeys = Collections.synchronizedSet(new HashSet<>(state.availableKeys()));
                 for (String key : state.keySet()) {
                     serverData.put(key, state.get(key));
                     availableKeys.add(key);

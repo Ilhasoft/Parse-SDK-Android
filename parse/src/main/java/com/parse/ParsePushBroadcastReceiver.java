@@ -21,7 +21,8 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.NotificationCompat;
+import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -171,7 +172,12 @@ public class ParsePushBroadcastReceiver extends BroadcastReceiver {
             context.sendBroadcast(broadcastIntent);
         }
 
-        Notification notification = getNotification(context, intent).build();
+        final NotificationCompat.Builder notificationBuilder = getNotification(context, intent);
+
+        Notification notification = null;
+        if (notificationBuilder != null) {
+            notification = notificationBuilder.build();
+        }
 
         if (notification != null) {
             ParseNotificationManager.getInstance().showNotification(context, notification);
@@ -383,6 +389,7 @@ public class ParsePushBroadcastReceiver extends BroadcastReceiver {
      * @return The notification builder to be displayed.
      * @see ParsePushBroadcastReceiver#onPushReceive(Context, Intent)
      */
+    @Nullable
     protected NotificationCompat.Builder getNotification(Context context, Intent intent) {
         JSONObject pushData = getPushData(intent);
         if (pushData == null || (!pushData.has("alert") && !pushData.has("title"))) {
