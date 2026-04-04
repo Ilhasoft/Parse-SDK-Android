@@ -8,16 +8,15 @@
  */
 package com.parse;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
 public class ParseClientConfigurationTest {
 
     @Test
@@ -26,12 +25,14 @@ public class ParseClientConfigurationTest {
         builder.applicationId("foo");
         builder.clientKey("bar");
         builder.enableLocalDataStore();
+        builder.allowCustomObjectId();
         Parse.Configuration configuration = builder.build();
 
         assertNull(configuration.context);
         assertEquals(configuration.applicationId, "foo");
         assertEquals(configuration.clientKey, "bar");
-        assertEquals(configuration.localDataStoreEnabled, true);
+        assertTrue(configuration.localDataStoreEnabled);
+        assertEquals(configuration.allowCustomObjectId, true);
     }
 
     @Test

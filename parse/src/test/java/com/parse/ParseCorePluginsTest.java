@@ -8,30 +8,25 @@
  */
 package com.parse;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-
-import java.util.List;
-
-import bolts.Task;
-
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 
+import com.parse.boltsinternal.Task;
+import java.util.List;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
 public class ParseCorePluginsTest extends ResetPluginsParseTest {
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
-        Parse.Configuration configuration = new Parse.Configuration.Builder(null)
-                .applicationId("1234")
-                .build();
+        Parse.Configuration configuration =
+                new Parse.Configuration.Builder(null).applicationId("1234").build();
         ParsePlugins.initialize(null, configuration);
     }
 
@@ -55,7 +50,7 @@ public class ParseCorePluginsTest extends ResetPluginsParseTest {
         ParseCorePlugins.getInstance().registerQueryController(controller);
     }
 
-    //TODO(grantland): testFileControllerDefaultImpl with ParseFileController interface
+    // TODO(grantland): testFileControllerDefaultImpl with ParseFileController interface
 
     @Test
     public void testRegisterFileController() {
@@ -64,9 +59,10 @@ public class ParseCorePluginsTest extends ResetPluginsParseTest {
         assertSame(controller, ParseCorePlugins.getInstance().getFileController());
     }
 
-    //TODO(grantland): testRegisterFileControllerWhenAlreadySet when getCacheDir is no longer global
+    // TODO(grantland): testRegisterFileControllerWhenAlreadySet when getCacheDir is no longer
+    // global
 
-    //TODO(mengyan): testAnalyticsControllerDefaultImpl when getEventuallyQueue is no longer global
+    // TODO(mengyan): testAnalyticsControllerDefaultImpl when getEventuallyQueue is no longer global
 
     @Test
     public void testRegisterAnalyticsController() {
@@ -75,11 +71,13 @@ public class ParseCorePluginsTest extends ResetPluginsParseTest {
         assertSame(controller, ParseCorePlugins.getInstance().getAnalyticsController());
     }
 
-    //TODO(mengyan): testRegisterAnalyticsControllerWhenAlreadySet when getEventuallyQueue is no longer global
+    // TODO(mengyan): testRegisterAnalyticsControllerWhenAlreadySet when getEventuallyQueue is no
+    // longer global
 
     @Test
     public void testCloudCodeControllerDefaultImpl() {
-        ParseCloudCodeController controller = ParseCorePlugins.getInstance().getCloudCodeController();
+        ParseCloudCodeController controller =
+                ParseCorePlugins.getInstance().getCloudCodeController();
         assertThat(controller, instanceOf(ParseCloudCodeController.class));
     }
 
@@ -106,7 +104,8 @@ public class ParseCorePluginsTest extends ResetPluginsParseTest {
         assertSame(controller, ParseCorePlugins.getInstance().getConfigController());
     }
 
-    // TODO(mengyan): testRegisterConfigControllerWhenAlreadySet when getCacheDir is no longer global
+    // TODO(mengyan): testRegisterConfigControllerWhenAlreadySet when getCacheDir is no longer
+    // global
 
     @Test
     public void testPushControllerDefaultImpl() {

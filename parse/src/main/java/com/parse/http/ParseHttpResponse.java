@@ -25,6 +25,7 @@ public final class ParseHttpResponse {
     private final String reasonPhrase;
     private final Map<String, String> headers;
     private final String contentType;
+
     private ParseHttpResponse(Builder builder) {
         this.statusCode = builder.statusCode;
         this.content = builder.content;
@@ -44,8 +45,8 @@ public final class ParseHttpResponse {
     }
 
     /**
-     * Returns the content of the {@code ParseHttpResponse}'s body. The content can only
-     * be read once and can't be reset.
+     * Returns the content of the {@code ParseHttpResponse}'s body. The content can only be read
+     * once and can't be reset.
      *
      * @return The content of the {@code ParseHttpResponse}'s body.
      */
@@ -100,9 +101,7 @@ public final class ParseHttpResponse {
         return headers;
     }
 
-    /**
-     * Builder for {@code ParseHttpResponse}.
-     */
+    /** Builder for {@code ParseHttpResponse}. */
     public static final class Builder {
 
         private int statusCode;
@@ -112,9 +111,7 @@ public final class ParseHttpResponse {
         private Map<String, String> headers;
         private String contentType;
 
-        /**
-         * Creates an empty {@code Builder}.
-         */
+        /** Creates an empty {@code Builder}. */
         public Builder() {
             this.totalSize = -1;
             this.headers = new HashMap<>();
@@ -123,7 +120,8 @@ public final class ParseHttpResponse {
         /**
          * Makes a new {@code Builder} based on the given {@code ParseHttpResponse}.
          *
-         * @param response The {@code ParseHttpResponse} where the {@code Builder}'s values come from.
+         * @param response The {@code ParseHttpResponse} where the {@code Builder}'s values come
+         *     from.
          */
         public Builder(ParseHttpResponse response) {
             super();
@@ -204,7 +202,7 @@ public final class ParseHttpResponse {
         /**
          * Adds a header to this {@code Builder}.
          *
-         * @param name  The name of the header.
+         * @param name The name of the header.
          * @param value The value of the header.
          * @return This {@code Builder}.
          */

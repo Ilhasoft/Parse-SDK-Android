@@ -8,33 +8,30 @@
  */
 package com.parse;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+
 import android.os.Parcel;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
 public class ParsePolygonTest {
 
     @Test
     public void testConstructors() {
-        List<ParseGeoPoint> arrayPoints = Arrays.asList(
-                new ParseGeoPoint(0, 0),
-                new ParseGeoPoint(0, 1),
-                new ParseGeoPoint(1, 1),
-                new ParseGeoPoint(1, 0)
-        );
+        List<ParseGeoPoint> arrayPoints =
+                Arrays.asList(
+                        new ParseGeoPoint(0, 0),
+                        new ParseGeoPoint(0, 1),
+                        new ParseGeoPoint(1, 1),
+                        new ParseGeoPoint(1, 0));
 
         List<ParseGeoPoint> listPoints = new ArrayList<>();
         listPoints.add(new ParseGeoPoint(0, 0));
@@ -82,13 +79,13 @@ public class ParsePolygonTest {
         ParsePolygon polygonB = new ParsePolygon(points);
         ParsePolygon polygonC = new ParsePolygon(diff);
 
-        assertTrue(polygonA.equals(polygonB));
-        assertTrue(polygonA.equals(polygonA));
-        assertTrue(polygonB.equals(polygonA));
+        assertEquals(polygonA, polygonB);
+        assertEquals(polygonA, polygonA);
+        assertEquals(polygonB, polygonA);
 
-        assertFalse(polygonA.equals(null));
-        assertFalse(polygonA.equals(true));
-        assertFalse(polygonA.equals(polygonC));
+        assertNotEquals(null, polygonA);
+        assertNotEquals(true, polygonA);
+        assertNotEquals(polygonA, polygonC);
     }
 
     @Test

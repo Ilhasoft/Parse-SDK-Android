@@ -8,9 +8,8 @@
  */
 package com.parse;
 
+import com.parse.boltsinternal.Task;
 import java.util.List;
-
-import bolts.Task;
 
 class OfflineQueryController extends AbstractQueryController {
 
@@ -24,9 +23,7 @@ class OfflineQueryController extends AbstractQueryController {
 
     @Override
     public <T extends ParseObject> Task<List<T>> findAsync(
-            ParseQuery.State<T> state,
-            ParseUser user,
-            Task<Void> cancellationToken) {
+            ParseQuery.State<T> state, ParseUser user, Task<Void> cancellationToken) {
         if (state.isFromLocalDatastore()) {
             return offlineStore.findFromPinAsync(state.pinName(), state, user);
         } else {
@@ -36,9 +33,7 @@ class OfflineQueryController extends AbstractQueryController {
 
     @Override
     public <T extends ParseObject> Task<Integer> countAsync(
-            ParseQuery.State<T> state,
-            ParseUser user,
-            Task<Void> cancellationToken) {
+            ParseQuery.State<T> state, ParseUser user, Task<Void> cancellationToken) {
         if (state.isFromLocalDatastore()) {
             return offlineStore.countFromPinAsync(state.pinName(), state, user);
         } else {

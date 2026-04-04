@@ -8,20 +8,20 @@
  */
 package com.parse;
 
+import com.parse.boltsinternal.Task;
 import java.util.Arrays;
 import java.util.List;
-
-import bolts.Continuation;
-import bolts.Task;
 
 class OfflineObjectStore<T extends ParseObject> implements ParseObjectStore<T> {
 
     private final String className;
     private final String pinName;
     private final ParseObjectStore<T> legacy;
+
     public OfflineObjectStore(Class<T> clazz, String pinName, ParseObjectStore<T> legacy) {
         this(getSubclassingController().getClassName(clazz), pinName, legacy);
     }
+
     public OfflineObjectStore(String className, String pinName, ParseObjectStore<T> legacy) {
         this.className = className;
         this.pinName = pinName;
@@ -34,99 +34,77 @@ class OfflineObjectStore<T extends ParseObject> implements ParseObjectStore<T> {
 
     private static <T extends ParseObject> Task<T> migrate(
             final ParseObjectStore<T> from, final ParseObjectStore<T> to) {
-        return from.getAsync().onSuccessTask(new Continuation<T, Task<T>>() {
-            @Override
-            public Task<T> then(Task<T> task) {
-                final T object = task.getResult();
-                if (object == null) {
-                    return task;
-                }
+        return from.getAsync()
+                .onSuccessTask(
+                        task -> {
+                            final T object = task.getResult();
+                            if (object == null) {
+                                return task;
+                            }
 
-                return Task.whenAll(Arrays.asList(
-                        from.deleteAsync(),
-                        to.setAsync(object)
-                )).continueWith(new Continuation<Void, T>() {
-                    @Override
-                    public T then(Task<Void> task) {
-                        return object;
-                    }
-                });
-            }
-        });
+                            return Task.whenAll(
+                                            Arrays.asList(from.deleteAsync(), to.setAsync(object)))
+                                    .continueWith(task1 -> object);
+                        });
     }
 
     @Override
     public Task<Void> setAsync(final T object) {
-        return ParseObject.unpinAllInBackground(pinName).continueWithTask(new Continuation<Void, Task<Void>>() {
-            @Override
-            public Task<Void> then(Task<Void> task) {
-                return object.pinInBackground(pinName, false);
-            }
-        });
+        return ParseObject.unpinAllInBackground(pinName)
+                .continueWithTask(task -> object.pinInBackground(pinName, false));
     }
 
     @Override
     public Task<T> getAsync() {
         // We need to set `ignoreACLs` since we can't use ACLs without the current user.
-        ParseQuery<T> query = ParseQuery.<T>getQuery(className)
-                .fromPin(pinName)
-                .ignoreACLs();
-        return query.findInBackground().onSuccessTask(new Continuation<List<T>, Task<T>>() {
-            @Override
-            public Task<T> then(Task<List<T>> task) {
-                List<T> results = task.getResult();
-                if (results != null) {
-                    if (results.size() == 1) {
-                        return Task.forResult(results.get(0));
-                    } else {
-                        return ParseObject.unpinAllInBackground(pinName).cast();
-                    }
-                }
-                return Task.forResult(null);
-            }
-        }).onSuccessTask(new Continuation<T, Task<T>>() {
-            @Override
-            public Task<T> then(Task<T> task) {
-                T ldsObject = task.getResult();
-                if (ldsObject != null) {
-                    return task;
-                }
+        ParseQuery<T> query = ParseQuery.<T>getQuery(className).fromPin(pinName).ignoreACLs();
+        return query.findInBackground()
+                .onSuccessTask(
+                        task -> {
+                            List<T> results = task.getResult();
+                            if (results != null) {
+                                if (results.size() == 1) {
+                                    return Task.forResult(results.get(0));
+                                } else {
+                                    return ParseObject.unpinAllInBackground(pinName).cast();
+                                }
+                            }
+                            return Task.forResult(null);
+                        })
+                .onSuccessTask(
+                        task -> {
+                            T ldsObject = task.getResult();
+                            if (ldsObject != null) {
+                                return task;
+                            }
 
-                return migrate(legacy, OfflineObjectStore.this).cast();
-            }
-        });
+                            return migrate(legacy, OfflineObjectStore.this).cast();
+                        });
     }
 
     @Override
     public Task<Boolean> existsAsync() {
         // We need to set `ignoreACLs` since we can't use ACLs without the current user.
-        ParseQuery<T> query = ParseQuery.<T>getQuery(className)
-                .fromPin(pinName)
-                .ignoreACLs();
-        return query.countInBackground().onSuccessTask(new Continuation<Integer, Task<Boolean>>() {
-            @Override
-            public Task<Boolean> then(Task<Integer> task) {
-                boolean exists = task.getResult() == 1;
-                if (exists) {
-                    return Task.forResult(true);
-                }
-                return legacy.existsAsync();
-            }
-        });
+        ParseQuery<T> query = ParseQuery.<T>getQuery(className).fromPin(pinName).ignoreACLs();
+        return query.countInBackground()
+                .onSuccessTask(
+                        task -> {
+                            boolean exists = task.getResult() == 1;
+                            if (exists) {
+                                return Task.forResult(true);
+                            }
+                            return legacy.existsAsync();
+                        });
     }
 
     @Override
     public Task<Void> deleteAsync() {
         final Task<Void> ldsTask = ParseObject.unpinAllInBackground(pinName);
-        return Task.whenAll(Arrays.asList(
-                legacy.deleteAsync(),
-                ldsTask
-        )).continueWithTask(new Continuation<Void, Task<Void>>() {
-            @Override
-            public Task<Void> then(Task<Void> task) {
-                // We only really care about the result of unpinning.
-                return ldsTask;
-            }
-        });
+        return Task.whenAll(Arrays.asList(legacy.deleteAsync(), ldsTask))
+                .continueWithTask(
+                        task -> {
+                            // We only really care about the result of unpinning.
+                            return ldsTask;
+                        });
     }
 }

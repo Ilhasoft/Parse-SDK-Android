@@ -8,6 +8,14 @@
  */
 package com.parse;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -17,24 +25,12 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 // For android.util.Base64
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
 public class ParseEncoderTest {
 
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
+    @Rule public final ExpectedException thrown = ExpectedException.none();
     ParseEncoderTestClass testClassObject = null;
 
     @Before
@@ -114,7 +110,8 @@ public class ParseEncoderTest {
         JSONObject polygonJSON = (JSONObject) testClassObject.encode(parsePolygon);
         assertNotNull(polygonJSON);
         assertEquals("Polygon", polygonJSON.getString("__type"));
-        assertEquals(parsePolygon.coordinatesToJSONArray(), polygonJSON.getJSONArray("coordinates"));
+        assertEquals(
+                parsePolygon.coordinatesToJSONArray(), polygonJSON.getJSONArray("coordinates"));
     }
 
     @Test
@@ -198,8 +195,7 @@ public class ParseEncoderTest {
     @Test
     public void testIllegalArgument() {
         thrown.expect(IllegalArgumentException.class);
-        thrown.expectMessage("invalid type for ParseObject: "
-                + ParseDecoder.class.toString());
+        thrown.expectMessage("invalid type for ParseObject: " + ParseDecoder.class.toString());
         testClassObject.encode(ParseDecoder.get());
     }
 

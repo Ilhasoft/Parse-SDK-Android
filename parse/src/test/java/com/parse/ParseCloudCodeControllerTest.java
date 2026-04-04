@@ -8,35 +8,32 @@
  */
 package com.parse;
 
-import com.parse.http.ParseHttpRequest;
-import com.parse.http.ParseHttpResponse;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.List;
-
-import bolts.Task;
-
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import com.parse.boltsinternal.Task;
+import com.parse.http.ParseHttpRequest;
+import com.parse.http.ParseHttpResponse;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.List;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 public class ParseCloudCodeControllerTest {
 
@@ -50,7 +47,7 @@ public class ParseCloudCodeControllerTest {
         ParseRESTCommand.server = null;
     }
 
-    //region testConstructor
+    // region testConstructor
 
     @Test
     public void testConstructor() {
@@ -60,9 +57,9 @@ public class ParseCloudCodeControllerTest {
         assertSame(restClient, controller.restClient);
     }
 
-    //endregion
+    // endregion
 
-    //region testConvertCloudResponse
+    // region testConvertCloudResponse
 
     @Test
     public void testConvertCloudResponseNullResponse() {
@@ -106,9 +103,9 @@ public class ParseCloudCodeControllerTest {
         assertEquals(2, listResult.get(2));
     }
 
-    //endregion
+    // endregion
 
-    //region testCallFunctionInBackground
+    // region testCallFunctionInBackground
 
     @Test
     public void testCallFunctionInBackgroundCommand() {
@@ -121,17 +118,18 @@ public class ParseCloudCodeControllerTest {
         json.put("result", "test");
         String content = json.toString();
 
-        ParseHttpResponse mockResponse = new ParseHttpResponse.Builder()
-                .setStatusCode(200)
-                .setTotalSize((long) content.length())
-                .setContent(new ByteArrayInputStream(content.getBytes()))
-                .build();
+        ParseHttpResponse mockResponse =
+                new ParseHttpResponse.Builder()
+                        .setStatusCode(200)
+                        .setTotalSize((long) content.length())
+                        .setContent(new ByteArrayInputStream(content.getBytes()))
+                        .build();
 
         ParseHttpClient restClient = mockParseHttpClientWithReponse(mockResponse);
         ParseCloudCodeController controller = new ParseCloudCodeController(restClient);
 
-        Task<String> cloudCodeTask = controller.callFunctionInBackground(
-                "test", new HashMap<String, Object>(), "sessionToken");
+        Task<String> cloudCodeTask =
+                controller.callFunctionInBackground("test", new HashMap<>(), "sessionToken");
         ParseTaskUtils.wait(cloudCodeTask);
 
         verify(restClient, times(1)).execute(any(ParseHttpRequest.class));
@@ -143,17 +141,18 @@ public class ParseCloudCodeControllerTest {
         JSONObject json = new JSONObject();
         String content = json.toString();
 
-        ParseHttpResponse mockResponse = new ParseHttpResponse.Builder()
-                .setStatusCode(200)
-                .setTotalSize((long) content.length())
-                .setContent(new ByteArrayInputStream(content.getBytes()))
-                .build();
+        ParseHttpResponse mockResponse =
+                new ParseHttpResponse.Builder()
+                        .setStatusCode(200)
+                        .setTotalSize((long) content.length())
+                        .setContent(new ByteArrayInputStream(content.getBytes()))
+                        .build();
 
         ParseHttpClient restClient = mockParseHttpClientWithReponse(mockResponse);
         ParseCloudCodeController controller = new ParseCloudCodeController(restClient);
 
-        Task<String> cloudCodeTask = controller.callFunctionInBackground(
-                "test", new HashMap<String, Object>(), "sessionToken");
+        Task<String> cloudCodeTask =
+                controller.callFunctionInBackground("test", new HashMap<>(), "sessionToken");
         ParseTaskUtils.wait(cloudCodeTask);
 
         verify(restClient, times(1)).execute(any(ParseHttpRequest.class));
@@ -171,7 +170,7 @@ public class ParseCloudCodeControllerTest {
         ParseCloudCodeController controller = new ParseCloudCodeController(restClient);
 
         Task<String> cloudCodeTask =
-                controller.callFunctionInBackground("test", new HashMap<String, Object>(), "sessionToken");
+                controller.callFunctionInBackground("test", new HashMap<>(), "sessionToken");
         // Do not use ParseTaskUtils.wait() since we do not want to throw the exception
         cloudCodeTask.waitForCompletion();
 
@@ -183,28 +182,29 @@ public class ParseCloudCodeControllerTest {
         assertEquals(ParseException.CONNECTION_FAILED, ((ParseException) error).getCode());
     }
 
-    //endregion
+    // endregion
 
     @Test
     public void testCallFunctionWithNullResult() throws Exception {
         String content = "{ result: null }";
 
-        ParseHttpResponse mockResponse = new ParseHttpResponse.Builder()
-                .setStatusCode(200)
-                .setTotalSize((long) content.length())
-                .setContent(new ByteArrayInputStream(content.getBytes()))
-                .build();
+        ParseHttpResponse mockResponse =
+                new ParseHttpResponse.Builder()
+                        .setStatusCode(200)
+                        .setTotalSize((long) content.length())
+                        .setContent(new ByteArrayInputStream(content.getBytes()))
+                        .build();
 
         ParseHttpClient restClient = mockParseHttpClientWithReponse(mockResponse);
         ParseCloudCodeController controller = new ParseCloudCodeController(restClient);
 
-        Task<String> cloudCodeTask = controller.callFunctionInBackground(
-                "test", new HashMap<String, Object>(), "sessionToken");
+        Task<String> cloudCodeTask =
+                controller.callFunctionInBackground("test", new HashMap<>(), "sessionToken");
         ParseTaskUtils.wait(cloudCodeTask);
 
         verify(restClient, times(1)).execute(any(ParseHttpRequest.class));
         String result = cloudCodeTask.getResult();
-        assertEquals(null, result);
+        assertNull(result);
     }
 
     private ParseHttpClient mockParseHttpClientWithReponse(ParseHttpResponse response)

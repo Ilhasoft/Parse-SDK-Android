@@ -8,13 +8,12 @@
  */
 package com.parse;
 
-import org.junit.Test;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class ParseByteArrayHttpBodyTest {
 
@@ -50,6 +49,7 @@ public class ParseByteArrayHttpBodyTest {
         String contentAgain = output.toString();
         assertEquals(content, contentAgain);
 
-        // No need to check whether content input stream is closed since it is a ByteArrayInputStream
+        // No need to check whether content input stream is closed since it is a
+        // ByteArrayInputStream
     }
 }

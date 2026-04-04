@@ -1,0 +1,55 @@
+apply plugin: "com.android.library"
+apply plugin: "maven-publish"
+apply plugin: "io.freefair.android-javadoc-jar"
+apply plugin: "io.freefair.android-sources-jar"
+
+android {
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+    }
+
+    lintOptions {
+        abortOnError false
+    }
+
+    buildTypes {
+        debug {
+            testCoverageEnabled = true
+            buildConfigField("String","PARSE_VERSION","\"${version}\"")
+        }
+        release {
+            minifyEnabled false
+            testCoverageEnabled = false
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            buildConfigField("String","PARSE_VERSION","\"${version}\"")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    api "com.facebook.android:facebook-login:[13.2.0, 17.0.0["
+    implementation project(":parse")
+
+    testImplementation "junit:junit:$rootProject.ext.junitVersion"
+    testImplementation "org.mockito:mockito-core:$rootProject.ext.mockitoCoreVersion"
+    testImplementation "org.mockito:mockito-inline:$rootProject.ext.mockitoCoreVersion"
+    testImplementation "org.robolectric:robolectric:$rootProject.ext.robolectricVersion"
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+            }
+        }
+    }
+}

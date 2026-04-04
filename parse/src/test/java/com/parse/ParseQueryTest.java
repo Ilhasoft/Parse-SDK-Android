@@ -8,26 +8,6 @@
  */
 package com.parse;
 
-import android.support.annotation.NonNull;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.regex.Pattern;
-
-import bolts.Continuation;
-import bolts.Task;
-import bolts.TaskCompletionSource;
-
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -36,11 +16,28 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import androidx.annotation.NonNull;
+import com.parse.boltsinternal.Continuation;
+import com.parse.boltsinternal.Task;
+import com.parse.boltsinternal.TaskCompletionSource;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Pattern;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 
 public class ParseQueryTest {
 
@@ -110,7 +107,8 @@ public class ParseQueryTest {
         assertEquals("_User", new ParseQuery<>(ParseUser.class).getClassName());
         assertEquals("TestObject", new ParseQuery<>("TestObject").getClassName());
 
-        ParseQuery.State.Builder<ParseObject> builder = new ParseQuery.State.Builder<>("TestObject");
+        ParseQuery.State.Builder<ParseObject> builder =
+                new ParseQuery.State.Builder<>("TestObject");
         ParseQuery<ParseObject> query = new ParseQuery<>(builder);
         assertEquals("TestObject", query.getClassName());
         assertSame(builder, query.getBuilder());
@@ -129,7 +127,9 @@ public class ParseQueryTest {
         ParseQuery.State<ParseObject> stateCopy = queryCopy.getBuilder().build();
 
         assertNotSame(query, queryCopy);
-        assertSame(query.getUserAsync(state).getResult(), queryCopy.getUserAsync(stateCopy).getResult());
+        assertSame(
+                query.getUserAsync(state).getResult(),
+                queryCopy.getUserAsync(stateCopy).getResult());
 
         assertNotSame(builder, builderCopy);
         assertSame(state.constraints().get("foo"), stateCopy.constraints().get("foo"));
@@ -147,8 +147,7 @@ public class ParseQueryTest {
         // TODO(grantland): Test that it gets the current user
 
         Parse.enableLocalDatastore(null);
-        query.fromLocalDatastore()
-                .ignoreACLs();
+        query.fromLocalDatastore().ignoreACLs();
         assertNull(ParseTaskUtils.wait(query.getUserAsync(query.getBuilder().build())));
     }
 
@@ -194,11 +193,12 @@ public class ParseQueryTest {
         query.setUser(new ParseUser());
 
         ParseCorePlugins.getInstance().registerQueryController(controller);
-        List<Task<Void>> tasks = Arrays.asList(
-                query.fromNetwork().findInBackground().makeVoid(),
-                query.fromLocalDatastore().findInBackground().makeVoid(),
-                query.setLimit(10).findInBackground().makeVoid(),
-                query.whereEqualTo("key", "value").countInBackground().makeVoid());
+        List<Task<Void>> tasks =
+                Arrays.asList(
+                        query.fromNetwork().findInBackground().makeVoid(),
+                        query.fromLocalDatastore().findInBackground().makeVoid(),
+                        query.setLimit(10).findInBackground().makeVoid(),
+                        query.whereEqualTo("key", "value").countInBackground().makeVoid());
         assertTrue(query.isRunning());
         tcs.trySetResult(null);
         ParseTaskUtils.wait(Task.whenAll(tasks));
@@ -211,9 +211,8 @@ public class ParseQueryTest {
         ParseQueryController controller = mock(CacheQueryController.class);
         ParseCorePlugins.getInstance().registerQueryController(controller);
         when(controller.countAsync(
-                any(ParseQuery.State.class),
-                any(ParseUser.class),
-                any(Task.class))).thenReturn(Task.forResult(0));
+                        any(ParseQuery.State.class), any(ParseUser.class), any(Task.class)))
+                .thenReturn(Task.forResult(0));
 
         final ParseQuery<ParseObject> query = ParseQuery.getQuery("TestObject");
 
@@ -227,9 +226,8 @@ public class ParseQueryTest {
         CacheQueryController controller = mock(CacheQueryController.class);
         ParseCorePlugins.getInstance().registerQueryController(controller);
         when(controller.countAsync(
-                any(ParseQuery.State.class),
-                any(ParseUser.class),
-                any(Task.class))).thenReturn(Task.forResult(0));
+                        any(ParseQuery.State.class), any(ParseUser.class), any(Task.class)))
+                .thenReturn(Task.forResult(0));
 
         final ParseQuery<ParseObject> query = ParseQuery.getQuery("TestObject");
 
@@ -243,22 +241,22 @@ public class ParseQueryTest {
 
     // TODO(grantland): Add ParseQuery -> ParseQuery.State.Builder calls
 
-    //region testConditions
+    // region testConditions
 
     @Test
     public void testCountLimit() {
         CacheQueryController controller = mock(CacheQueryController.class);
         ParseCorePlugins.getInstance().registerQueryController(controller);
         when(controller.countAsync(
-                any(ParseQuery.State.class),
-                any(ParseUser.class),
-                any(Task.class))).thenReturn(Task.forResult(0));
+                        any(ParseQuery.State.class), any(ParseUser.class), any(Task.class)))
+                .thenReturn(Task.forResult(0));
 
         ArgumentCaptor<ParseQuery.State> state = ArgumentCaptor.forClass(ParseQuery.State.class);
 
         final ParseQuery<ParseObject> query = ParseQuery.getQuery("TestObject");
         query.countInBackground();
-        verify(controller, times(1)).countAsync(state.capture(), any(ParseUser.class), any(Task.class));
+        verify(controller, times(1))
+                .countAsync(state.capture(), any(ParseUser.class), any(Task.class));
         assertEquals(0, state.getValue().limit());
     }
 
@@ -267,15 +265,15 @@ public class ParseQueryTest {
         CacheQueryController controller = mock(CacheQueryController.class);
         ParseCorePlugins.getInstance().registerQueryController(controller);
         when(controller.countAsync(
-                any(ParseQuery.State.class),
-                any(ParseUser.class),
-                any(Task.class))).thenReturn(Task.forResult(0));
+                        any(ParseQuery.State.class), any(ParseUser.class), any(Task.class)))
+                .thenReturn(Task.forResult(0));
 
         ArgumentCaptor<ParseQuery.State> state = ArgumentCaptor.forClass(ParseQuery.State.class);
 
         final ParseQuery<ParseObject> query = ParseQuery.getQuery("TestObject");
         query.countInBackground(null);
-        verify(controller, times(1)).countAsync(state.capture(), any(ParseUser.class), any(Task.class));
+        verify(controller, times(1))
+                .countAsync(state.capture(), any(ParseUser.class), any(Task.class));
         assertEquals(0, state.getValue().limit());
     }
 
@@ -419,7 +417,8 @@ public class ParseQueryTest {
         // We generate a state to verify the content of the builder
         ParseQuery.State state = query.getBuilder().build();
         ParseQuery.QueryConstraints queryConstraints = state.constraints();
-        ParseQuery.KeyConstraints keyConstraints = (ParseQuery.KeyConstraints) queryConstraints.get("key");
+        ParseQuery.KeyConstraints keyConstraints =
+                (ParseQuery.KeyConstraints) queryConstraints.get("key");
         Map searchDictionary = (Map) keyConstraints.get("$text");
         Map termDictionary = (Map) searchDictionary.get("$search");
         String value = (String) termDictionary.get("$term");
@@ -625,7 +624,8 @@ public class ParseQueryTest {
         // We generate a state to verify the content of the builder
         ParseQuery.State state = query.getBuilder().build();
         ParseQuery.QueryConstraints queryConstraints = state.constraints();
-        ParseQuery.KeyConstraints keyConstraints = (ParseQuery.KeyConstraints) queryConstraints.get("key");
+        ParseQuery.KeyConstraints keyConstraints =
+                (ParseQuery.KeyConstraints) queryConstraints.get("key");
         Map map = (Map) keyConstraints.get("$geoWithin");
         List<Object> list = (List<Object>) map.get("$polygon");
         assertEquals(3, list.size());
@@ -647,7 +647,8 @@ public class ParseQueryTest {
         // We generate a state to verify the content of the builder
         ParseQuery.State state = query.getBuilder().build();
         ParseQuery.QueryConstraints queryConstraints = state.constraints();
-        ParseQuery.KeyConstraints keyConstraints = (ParseQuery.KeyConstraints) queryConstraints.get("key");
+        ParseQuery.KeyConstraints keyConstraints =
+                (ParseQuery.KeyConstraints) queryConstraints.get("key");
         Map map = (Map) keyConstraints.get("$geoWithin");
         List<Object> list = (List<Object>) map.get("$polygon");
         assertEquals(3, list.size());
@@ -839,94 +840,87 @@ public class ParseQueryTest {
         assertEquals(5, query.getSkip());
     }
 
-    //endregion
+    // endregion
 
     @NonNull
     private String buildStartsWithPattern(String value) {
         return "^" + Pattern.quote(value);
     }
 
-    /**
-     * A {@link ParseQueryController} used for testing.
-     */
+    /** A {@link ParseQueryController} used for testing. */
     private static class TestQueryController implements ParseQueryController {
 
         private Task<Void> toAwait = Task.forResult(null);
 
         public Task<Void> await(final Task<Void> task) {
-            toAwait = toAwait.continueWithTask(new Continuation<Void, Task<Void>>() {
-                @Override
-                public Task<Void> then(Task<Void> ignored) {
-                    return task;
-                }
-            });
+            toAwait = toAwait.continueWithTask(ignored -> task);
             return toAwait;
         }
 
         @Override
-        public <T extends ParseObject> Task<List<T>> findAsync(ParseQuery.State<T> state,
-                                                               ParseUser user, Task<Void> cancellationToken) {
+        public <T extends ParseObject> Task<List<T>> findAsync(
+                ParseQuery.State<T> state, ParseUser user, Task<Void> cancellationToken) {
             final AtomicBoolean cancelled = new AtomicBoolean(false);
-            cancellationToken.continueWith(new Continuation<Void, Void>() {
-                @Override
-                public Void then(Task<Void> task) {
-                    cancelled.set(true);
-                    return null;
-                }
-            });
-            return await(Task.<Void>forResult(null).continueWithTask(new Continuation<Void, Task<Void>>() {
-                @Override
-                public Task<Void> then(Task<Void> task) {
-                    if (cancelled.get()) {
-                        return Task.cancelled();
-                    }
-                    return task;
-                }
-            })).cast();
+            cancellationToken.continueWith(
+                    (Continuation<Void, Void>)
+                            task -> {
+                                cancelled.set(true);
+                                return null;
+                            });
+            return await(
+                            Task.<Void>forResult(null)
+                                    .continueWithTask(
+                                            task -> {
+                                                if (cancelled.get()) {
+                                                    return Task.cancelled();
+                                                }
+                                                return task;
+                                            }))
+                    .cast();
         }
 
         @Override
-        public <T extends ParseObject> Task<Integer> countAsync(ParseQuery.State<T> state,
-                                                                ParseUser user, Task<Void> cancellationToken) {
+        public <T extends ParseObject> Task<Integer> countAsync(
+                ParseQuery.State<T> state, ParseUser user, Task<Void> cancellationToken) {
             final AtomicBoolean cancelled = new AtomicBoolean(false);
-            cancellationToken.continueWith(new Continuation<Void, Void>() {
-                @Override
-                public Void then(Task<Void> task) {
-                    cancelled.set(true);
-                    return null;
-                }
-            });
-            return await(Task.<Void>forResult(null).continueWithTask(new Continuation<Void, Task<Void>>() {
-                @Override
-                public Task<Void> then(Task<Void> task) {
-                    if (cancelled.get()) {
-                        return Task.cancelled();
-                    }
-                    return task;
-                }
-            })).cast();
+            cancellationToken.continueWith(
+                    (Continuation<Void, Void>)
+                            task -> {
+                                cancelled.set(true);
+                                return null;
+                            });
+            return await(
+                            Task.<Void>forResult(null)
+                                    .continueWithTask(
+                                            task -> {
+                                                if (cancelled.get()) {
+                                                    return Task.cancelled();
+                                                }
+                                                return task;
+                                            }))
+                    .cast();
         }
 
         @Override
-        public <T extends ParseObject> Task<T> getFirstAsync(ParseQuery.State<T> state,
-                                                             ParseUser user, Task<Void> cancellationToken) {
+        public <T extends ParseObject> Task<T> getFirstAsync(
+                ParseQuery.State<T> state, ParseUser user, Task<Void> cancellationToken) {
             final AtomicBoolean cancelled = new AtomicBoolean(false);
-            cancellationToken.continueWith(new Continuation<Void, Void>() {
-                @Override
-                public Void then(Task<Void> task) {
-                    cancelled.set(true);
-                    return null;
-                }
-            });
-            return await(Task.<Void>forResult(null).continueWithTask(new Continuation<Void, Task<Void>>() {
-                @Override
-                public Task<Void> then(Task<Void> task) {
-                    if (cancelled.get()) {
-                        return Task.cancelled();
-                    }
-                    return task;
-                }
-            })).cast();
+            cancellationToken.continueWith(
+                    (Continuation<Void, Void>)
+                            task -> {
+                                cancelled.set(true);
+                                return null;
+                            });
+            return await(
+                            Task.<Void>forResult(null)
+                                    .continueWithTask(
+                                            task -> {
+                                                if (cancelled.get()) {
+                                                    return Task.cancelled();
+                                                }
+                                                return task;
+                                            }))
+                    .cast();
         }
     }
 }

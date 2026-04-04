@@ -12,15 +12,12 @@ import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.text.TextUtils;
-
+import com.parse.boltsinternal.Task;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
-
-import bolts.Continuation;
-import bolts.Task;
 
 /**
  * The {@code ParseInstallation} is a local representation of installation data that can be saved
@@ -41,10 +38,20 @@ public class ParseInstallation extends ParseObject {
     private static final String KEY_TIME_ZONE = "timeZone";
     private static final String KEY_LOCALE = "localeIdentifier";
     private static final String KEY_APP_VERSION = "appVersion";
-    private static final List<String> READ_ONLY_FIELDS = Collections.unmodifiableList(
-            Arrays.asList(KEY_DEVICE_TYPE, KEY_INSTALLATION_ID, KEY_DEVICE_TOKEN, KEY_PUSH_TYPE,
-                    KEY_TIME_ZONE, KEY_LOCALE, KEY_APP_VERSION, KEY_APP_NAME, KEY_PARSE_VERSION,
-                    KEY_APP_IDENTIFIER, KEY_OBJECT_ID));
+    private static final List<String> READ_ONLY_FIELDS =
+            Collections.unmodifiableList(
+                    Arrays.asList(
+                            KEY_DEVICE_TYPE,
+                            KEY_INSTALLATION_ID,
+                            KEY_DEVICE_TOKEN,
+                            KEY_PUSH_TYPE,
+                            KEY_TIME_ZONE,
+                            KEY_LOCALE,
+                            KEY_APP_VERSION,
+                            KEY_APP_NAME,
+                            KEY_PARSE_VERSION,
+                            KEY_APP_IDENTIFIER,
+                            KEY_OBJECT_ID));
 
     public ParseInstallation() {
         // do nothing
@@ -58,8 +65,7 @@ public class ParseInstallation extends ParseObject {
 
     public static ParseInstallation getCurrentInstallation() {
         try {
-            return ParseTaskUtils.wait(
-                    getCurrentInstallationController().getAsync());
+            return ParseTaskUtils.wait(getCurrentInstallationController().getAsync());
         } catch (ParseException e) {
             // In order to have backward compatibility, we swallow the exception silently.
             return null;
@@ -68,15 +74,16 @@ public class ParseInstallation extends ParseObject {
 
     /**
      * Constructs a query for {@code ParseInstallation}.
-     * <p/>
-     * <strong>Note:</strong> We only allow the following types of queries for installations:
+     *
+     * <p><strong>Note:</strong> We only allow the following types of queries for installations:
+     *
      * <pre>
      * query.get(objectId)
      * query.whereEqualTo("installationId", value)
      * query.whereMatchesKeyInQuery("installationId", keyInQuery, query)
      * </pre>
-     * <p/>
-     * You can add additional query clauses, but one of the above must appear as a top-level
+     *
+     * <p>You can add additional query clauses, but one of the above must appear as a top-level
      * {@code AND} clause in the query.
      *
      * @see com.parse.ParseQuery#getQuery(Class)
@@ -100,17 +107,17 @@ public class ParseInstallation extends ParseObject {
     }
 
     @Override
-        /* package */ boolean needsDefaultACL() {
+    /* package */ boolean needsDefaultACL() {
         return false;
     }
 
     @Override
-        /* package */ boolean isKeyMutable(String key) {
+    /* package */ boolean isKeyMutable(String key) {
         return !READ_ONLY_FIELDS.contains(key);
     }
 
     @Override
-        /* package */ void updateBeforeSave() {
+    /* package */ void updateBeforeSave() {
         super.updateBeforeSave();
         if (getCurrentInstallationController().isCurrent(ParseInstallation.this)) {
             updateTimezone();
@@ -121,11 +128,13 @@ public class ParseInstallation extends ParseObject {
     }
 
     @Override
-        /* package */ <T extends ParseObject> Task<T> fetchAsync(
+    /* package */ <T extends ParseObject> Task<T> fetchAsync(
             final String sessionToken, final Task<Void> toAwait) {
         synchronized (mutex) {
-            // Because the Service and the global currentInstallation are different objects, we may not
-            // have the same ObjectID (we never will at bootstrap). The server has a special hack for
+            // Because the Service and the global currentInstallation are different objects, we may
+            // not
+            // have the same ObjectID (we never will at bootstrap). The server has a special hack
+            // for
             // _Installation where save with an existing InstallationID will merge Object IDs
             Task<Void> result;
             if (getObjectId() == null) {
@@ -133,63 +142,59 @@ public class ParseInstallation extends ParseObject {
             } else {
                 result = Task.forResult(null);
             }
-            return result.onSuccessTask(new Continuation<Void, Task<T>>() {
-                @Override
-                public Task<T> then(Task<Void> task) {
-                    return ParseInstallation.super.fetchAsync(sessionToken, toAwait);
-                }
-            });
+            return result.onSuccessTask(
+                    task -> ParseInstallation.super.fetchAsync(sessionToken, toAwait));
         }
     }
 
     @Override
-        /* package */ Task<Void> saveAsync(final String sessionToken, final Task<Void> toAwait) {
-        return super.saveAsync(sessionToken, toAwait).continueWithTask(new Continuation<Void, Task<Void>>() {
-            @Override
-            public Task<Void> then(Task<Void> task) {
-                // Retry the fetch as a save operation because this Installation was deleted on the server.
-                if (task.getError() != null
-                        && task.getError() instanceof ParseException) {
-                    int errCode = ((ParseException) task.getError()).getCode();
-                    if (errCode == ParseException.OBJECT_NOT_FOUND
-                            || (errCode == ParseException.MISSING_REQUIRED_FIELD_ERROR && getObjectId() == null)) {
-                        synchronized (mutex) {
-                            setState(new State.Builder(getState()).objectId(null).build());
-                            markAllFieldsDirty();
-                            return ParseInstallation.super.saveAsync(sessionToken, toAwait);
-                        }
-                    }
-                }
-                return task;
-            }
-        });
+    /* package */ Task<Void> saveAsync(final String sessionToken, final Task<Void> toAwait) {
+        return super.saveAsync(sessionToken, toAwait)
+                .continueWithTask(
+                        task -> {
+                            // Retry the fetch as a save operation because this Installation was
+                            // deleted on the server.
+                            if (task.getError() != null
+                                    && task.getError() instanceof ParseException) {
+                                int errCode = ((ParseException) task.getError()).getCode();
+                                if (errCode == ParseException.OBJECT_NOT_FOUND
+                                        || (errCode == ParseException.MISSING_REQUIRED_FIELD_ERROR
+                                                && getObjectId() == null)) {
+                                    synchronized (mutex) {
+                                        setState(
+                                                new State.Builder(getState())
+                                                        .objectId(null)
+                                                        .build());
+                                        markAllFieldsDirty();
+                                        return ParseInstallation.super.saveAsync(
+                                                sessionToken, toAwait);
+                                    }
+                                }
+                            }
+                            return task;
+                        });
     }
 
     @Override
-        /* package */ Task<Void> handleSaveResultAsync(ParseObject.State result,
-                                                       ParseOperationSet operationsBeforeSave) {
+    /* package */ Task<Void> handleSaveResultAsync(
+            ParseObject.State result, ParseOperationSet operationsBeforeSave) {
         Task<Void> task = super.handleSaveResultAsync(result, operationsBeforeSave);
 
         if (result == null) { // Failure
             return task;
         }
 
-        return task.onSuccessTask(new Continuation<Void, Task<Void>>() {
-            @Override
-            public Task<Void> then(Task<Void> task) {
-                return getCurrentInstallationController().setAsync(ParseInstallation.this);
-            }
-        });
+        return task.onSuccessTask(
+                task1 -> getCurrentInstallationController().setAsync(ParseInstallation.this));
     }
 
     @Override
-        /* package */ Task<Void> handleFetchResultAsync(final ParseObject.State newState) {
-        return super.handleFetchResultAsync(newState).onSuccessTask(new Continuation<Void, Task<Void>>() {
-            @Override
-            public Task<Void> then(Task<Void> task) {
-                return getCurrentInstallationController().setAsync(ParseInstallation.this);
-            }
-        });
+    /* package */ Task<Void> handleFetchResultAsync(final ParseObject.State newState) {
+        return super.handleFetchResultAsync(newState)
+                .onSuccessTask(
+                        task ->
+                                getCurrentInstallationController()
+                                        .setAsync(ParseInstallation.this));
     }
 
     // Android documentation states that getID may return one of many forms: America/LosAngeles,
@@ -209,8 +214,9 @@ public class ParseInstallation extends ParseObject {
                 String packageName = context.getPackageName();
                 PackageManager pm = context.getPackageManager();
                 PackageInfo pkgInfo = pm.getPackageInfo(packageName, 0);
-                String appVersion = pkgInfo.versionName;
-                String appName = pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString();
+                String appVersion = String.valueOf(pkgInfo.versionCode);
+                String appName =
+                        pm.getApplicationLabel(pm.getApplicationInfo(packageName, 0)).toString();
 
                 if (packageName != null && !packageName.equals(get(KEY_APP_IDENTIFIER))) {
                     performPut(KEY_APP_IDENTIFIER, packageName);
@@ -224,6 +230,8 @@ public class ParseInstallation extends ParseObject {
             } catch (PackageManager.NameNotFoundException e) {
                 PLog.w(TAG, "Cannot load package info; will not be saved to installation");
             }
+
+            performPut(KEY_PARSE_VERSION, BuildConfig.PARSE_VERSION);
         }
     }
 

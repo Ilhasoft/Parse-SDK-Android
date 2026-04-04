@@ -8,17 +8,15 @@
  */
 package com.parse;
 
-import org.json.JSONArray;
-import org.json.JSONObject;
-
+import androidx.annotation.NonNull;
+import com.parse.boltsinternal.Task;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import bolts.Continuation;
-import bolts.Task;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 /**
  * The {@code ParseConfig} is a local representation of configuration data that can be set from the
@@ -34,7 +32,7 @@ public class ParseConfig {
     }
 
     /* package */ ParseConfig() {
-        params = Collections.unmodifiableMap(new HashMap<String, Object>());
+        params = Collections.unmodifiableMap(new HashMap<>());
     }
 
     /* package for tests */
@@ -43,17 +41,16 @@ public class ParseConfig {
     }
 
     /**
-     * Retrieves the most recently-fetched configuration object, either from memory or
-     * disk if necessary.
+     * Retrieves the most recently-fetched configuration object, either from memory or disk if
+     * necessary.
      *
-     * @return The most recently-fetched {@code ParseConfig} if it exists, else an empty
-     * {@code ParseConfig}
+     * @return The most recently-fetched {@code ParseConfig} if it exists, else an empty {@code
+     *     ParseConfig}
      */
     public static ParseConfig getCurrentConfig() {
         try {
-            return ParseTaskUtils.wait(getConfigController().getCurrentConfigController()
-                    .getCurrentConfigAsync()
-            );
+            return ParseTaskUtils.wait(
+                    getConfigController().getCurrentConfigController().getCurrentConfigAsync());
         } catch (ParseException e) {
             // In order to have backward compatibility, we swallow the exception silently.
             return new ParseConfig();
@@ -87,27 +84,17 @@ public class ParseConfig {
      * @return A Task that is resolved when the fetch completes.
      */
     public static Task<ParseConfig> getInBackground() {
-        return taskQueue.enqueue(new Continuation<Void, Task<ParseConfig>>() {
-            @Override
-            public Task<ParseConfig> then(Task<Void> toAwait) {
-                return getAsync(toAwait);
-            }
-        });
+        return taskQueue.enqueue(ParseConfig::getAsync);
     }
 
     private static Task<ParseConfig> getAsync(final Task<Void> toAwait) {
-        return ParseUser.getCurrentSessionTokenAsync().onSuccessTask(new Continuation<String, Task<ParseConfig>>() {
-            @Override
-            public Task<ParseConfig> then(Task<String> task) {
-                final String sessionToken = task.getResult();
-                return toAwait.continueWithTask(new Continuation<Void, Task<ParseConfig>>() {
-                    @Override
-                    public Task<ParseConfig> then(Task<Void> task) {
-                        return getConfigController().getAsync(sessionToken);
-                    }
-                });
-            }
-        });
+        return ParseUser.getCurrentSessionTokenAsync()
+                .onSuccessTask(
+                        task -> {
+                            final String sessionToken = task.getResult();
+                            return toAwait.continueWithTask(
+                                    task1 -> getConfigController().getAsync(sessionToken));
+                        });
     }
 
     @SuppressWarnings("unchecked")
@@ -125,8 +112,8 @@ public class ParseConfig {
     }
 
     /**
-     * Access a value. In most cases it is more convenient to use a helper function such as
-     * {@link #getString} or {@link #getInt}.
+     * Access a value. In most cases it is more convenient to use a helper function such as {@link
+     * #getString} or {@link #getInt}.
      *
      * @param key The key to access the value for.
      * @return Returns {@code null} if there is no such key.
@@ -139,8 +126,9 @@ public class ParseConfig {
      * Access a value, returning a default value if the key doesn't exist. In most cases it is more
      * convenient to use a helper function such as {@link #getString} or {@link #getInt}.
      *
-     * @param key          The key to access the value for.
-     * @param defaultValue The value to return if the key is not present in the configuration object.
+     * @param key The key to access the value for.
+     * @param defaultValue The value to return if the key is not present in the configuration
+     *     object.
      * @return The default value if there is no such key.
      */
     public Object get(String key, Object defaultValue) {
@@ -167,7 +155,7 @@ public class ParseConfig {
     /**
      * Access a {@code boolean} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a {@code boolean}.
      */
@@ -192,7 +180,7 @@ public class ParseConfig {
     /**
      * Access a {@link Date} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a {@link Date}.
      */
@@ -220,7 +208,7 @@ public class ParseConfig {
     /**
      * Access a {@code double} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a number.
      */
@@ -242,7 +230,7 @@ public class ParseConfig {
     /**
      * Access an {@code int} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a number.
      */
@@ -264,21 +252,22 @@ public class ParseConfig {
     /**
      * Access a {@link JSONArray} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a {@link JSONArray}.
      */
     public JSONArray getJSONArray(String key, JSONArray defaultValue) {
         List<Object> list = getList(key);
         Object encoded = (list != null) ? PointerEncoder.get().encode(list) : null;
-        //TODO(mengyan) There are actually two cases, getList(key) will return null
+        // TODO(mengyan) There are actually two cases, getList(key) will return null
         // case 1: key not exist, in this situation, we should return JSONArray defaultValue
         // case 2: key exist but value is Json.NULL, in this situation, we should return null
         // The following line we only cover case 2. We can not revise it since it may break some
         // existing app, but we should do it someday.
-        return (encoded == null || encoded instanceof JSONArray) ? (JSONArray) encoded : defaultValue;
+        return (encoded == null || encoded instanceof JSONArray)
+                ? (JSONArray) encoded
+                : defaultValue;
     }
-
 
     /**
      * Access a {@link JSONObject} value.
@@ -293,27 +282,29 @@ public class ParseConfig {
     /**
      * Access a {@link JSONObject} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a {@link JSONObject}.
      */
     public JSONObject getJSONObject(String key, JSONObject defaultValue) {
         Map<String, Object> map = getMap(key);
         Object encoded = (map != null) ? PointerEncoder.get().encode(map) : null;
-        //TODO(mengyan) There are actually two cases, getList(key) will return null
+        // TODO(mengyan) There are actually two cases, getList(key) will return null
         // case 1: key not exist, in this situation, we should return JSONArray defaultValue
         // case 2: key exist but value is Json.NULL, in this situation, we should return null
         // The following line we only cover case 2. We can not revise it since it may break some
         // existing app, but we should do it someday.
-        return (encoded == null || encoded instanceof JSONObject) ? (JSONObject) encoded : defaultValue;
+        return (encoded == null || encoded instanceof JSONObject)
+                ? (JSONObject) encoded
+                : defaultValue;
     }
 
     /**
      * Access a {@link List} value.
      *
      * @param key The key to access the value for.
-     * @return Returns {@code null} if there is no such key or if it cannot be converted to a
-     * {@link List}.
+     * @return Returns {@code null} if there is no such key or if it cannot be converted to a {@link
+     *     List}.
      */
     public <T> List<T> getList(String key) {
         return getList(key, null);
@@ -322,10 +313,10 @@ public class ParseConfig {
     /**
      * Access a {@link List} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
-     * @return The default value if there is no such key or if it cannot be
-     * converted to a {@link List}.
+     * @return The default value if there is no such key or if it cannot be converted to a {@link
+     *     List}.
      */
     public <T> List<T> getList(String key, List<T> defaultValue) {
         if (!params.containsKey(key)) {
@@ -354,7 +345,7 @@ public class ParseConfig {
     /**
      * Access a {@code long} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a number.
      */
@@ -367,8 +358,7 @@ public class ParseConfig {
      * Access a {@link Map} value.
      *
      * @param key The key to access the value for.
-     * @return {@code null} if there is no such key or if it cannot be converted to a
-     * {@link Map}.
+     * @return {@code null} if there is no such key or if it cannot be converted to a {@link Map}.
      */
     public <V> Map<String, V> getMap(String key) {
         return getMap(key, null);
@@ -377,10 +367,10 @@ public class ParseConfig {
     /**
      * Access a {@link Map} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
-     * @return The default value if there is no such key or if it cannot be converted
-     * to a {@link Map}.
+     * @return The default value if there is no such key or if it cannot be converted to a {@link
+     *     Map}.
      */
     public <V> Map<String, V> getMap(String key, Map<String, V> defaultValue) {
         if (!params.containsKey(key)) {
@@ -409,7 +399,7 @@ public class ParseConfig {
     /**
      * Access a numerical value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a {@link Number}.
      */
@@ -425,8 +415,8 @@ public class ParseConfig {
     }
 
     /**
-     * Access a {@link ParseFile} value. This function will not perform a network request. Unless the
-     * {@link ParseFile} has been downloaded (e.g. by calling {@link ParseFile#getData()}),
+     * Access a {@link ParseFile} value. This function will not perform a network request. Unless
+     * the {@link ParseFile} has been downloaded (e.g. by calling {@link ParseFile#getData()}),
      * {@link ParseFile#isDataAvailable()} will return false.
      *
      * @param key The key to access the value for.
@@ -437,12 +427,12 @@ public class ParseConfig {
     }
 
     /**
-     * Access a {@link ParseFile} value, returning a default value if it doesn't exist. This function
-     * will not perform a network request. Unless the {@link ParseFile} has been downloaded
-     * (e.g. by calling {@link ParseFile#getData()}), {@link ParseFile#isDataAvailable()} will return
-     * false.
+     * Access a {@link ParseFile} value, returning a default value if it doesn't exist. This
+     * function will not perform a network request. Unless the {@link ParseFile} has been downloaded
+     * (e.g. by calling {@link ParseFile#getData()}), {@link ParseFile#isDataAvailable()} will
+     * return false.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a {@link ParseFile}.
      */
@@ -470,7 +460,7 @@ public class ParseConfig {
     /**
      * Access a {@link ParseGeoPoint} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for
+     * @param key The key to access the value for
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a {@link ParseGeoPoint}.
      */
@@ -498,7 +488,7 @@ public class ParseConfig {
     /**
      * Access a {@link String} value, returning a default value if it doesn't exist.
      *
-     * @param key          The key to access the value for.
+     * @param key The key to access the value for.
      * @param defaultValue The value to return if the key is not present or has the wrong type.
      * @return The default value if there is no such key or if it is not a {@link String}.
      */
@@ -513,6 +503,7 @@ public class ParseConfig {
         return (value instanceof String) ? (String) value : defaultValue;
     }
 
+    @NonNull
     @Override
     public String toString() {
         return "ParseConfig[" + params.toString() + "]";

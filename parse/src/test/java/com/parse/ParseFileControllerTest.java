@@ -8,50 +8,56 @@
  */
 package com.parse;
 
-import com.parse.http.ParseHttpRequest;
-import com.parse.http.ParseHttpResponse;
-
-import org.json.JSONObject;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URL;
-
-import bolts.Task;
-
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.content.ContentResolver;
+import android.content.Context;
+import android.net.Uri;
+import com.parse.boltsinternal.Task;
+import com.parse.http.ParseHttpRequest;
+import com.parse.http.ParseHttpResponse;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
+import org.json.JSONObject;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
 // For org.json
-@RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
 public class ParseFileControllerTest {
 
-    @Rule
-    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+    @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+    private ParsePlugins plugins;
 
     @Before
     public void setUp() throws MalformedURLException {
         ParseRESTCommand.server = new URL("https://api.parse.com/1");
+        plugins = mock(ParsePlugins.class);
+        Context context = mock(Context.class);
+        ContentResolver contentResolver = mock(ContentResolver.class);
+        when(context.getContentResolver()).thenReturn(contentResolver);
+        when(plugins.applicationContext()).thenReturn(context);
+        Parse.Configuration configuration = new Parse.Configuration.Builder(null).build();
+        when(plugins.configuration()).thenReturn(configuration);
+        ParsePlugins.set(plugins);
     }
 
     @After
@@ -59,6 +65,7 @@ public class ParseFileControllerTest {
         // TODO(grantland): Remove once we no longer rely on retry logic.
         ParseRequest.setDefaultInitialRetryDelay(ParseRequest.DEFAULT_INITIAL_RETRY_DELAY);
         ParseRESTCommand.server = null;
+        ParsePlugins.reset();
     }
 
     @Test
@@ -94,7 +101,7 @@ public class ParseFileControllerTest {
         assertFalse(file2.exists());
     }
 
-    //region testSaveAsync
+    // region testSaveAsync
 
     @Test
     public void testSaveAsyncRequest() {
@@ -106,9 +113,7 @@ public class ParseFileControllerTest {
         ParseHttpClient restClient = mock(ParseHttpClient.class);
         ParseFileController controller = new ParseFileController(restClient, null);
 
-        ParseFile.State state = new ParseFile.State.Builder()
-                .url("http://example.com")
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().url("http://example.com").build();
         Task<ParseFile.State> task = controller.saveAsync(state, (byte[]) null, null, null, null);
         task.waitForCompletion();
 
@@ -125,7 +130,8 @@ public class ParseFileControllerTest {
 
         ParseFile.State state = new ParseFile.State.Builder().build();
         Task<Void> cancellationToken = Task.cancelled();
-        Task<ParseFile.State> task = controller.saveAsync(state, (byte[]) null, null, null, cancellationToken);
+        Task<ParseFile.State> task =
+                controller.saveAsync(state, (byte[]) null, null, null, cancellationToken);
         task.waitForCompletion();
 
         verify(restClient, times(0)).execute(any(ParseHttpRequest.class));
@@ -139,11 +145,12 @@ public class ParseFileControllerTest {
         json.put("url", "http://example.com");
         String content = json.toString();
 
-        ParseHttpResponse mockResponse = new ParseHttpResponse.Builder()
-                .setStatusCode(200)
-                .setTotalSize((long) content.length())
-                .setContent(new ByteArrayInputStream(content.getBytes()))
-                .build();
+        ParseHttpResponse mockResponse =
+                new ParseHttpResponse.Builder()
+                        .setStatusCode(200)
+                        .setTotalSize((long) content.length())
+                        .setContent(new ByteArrayInputStream(content.getBytes()))
+                        .build();
 
         ParseHttpClient restClient = mock(ParseHttpClient.class);
         when(restClient.execute(any(ParseHttpRequest.class))).thenReturn(mockResponse);
@@ -152,10 +159,8 @@ public class ParseFileControllerTest {
         ParseFileController controller = new ParseFileController(restClient, root);
 
         byte[] data = "hello".getBytes();
-        ParseFile.State state = new ParseFile.State.Builder()
-                .name("file_name")
-                .mimeType("mime_type")
-                .build();
+        ParseFile.State state =
+                new ParseFile.State.Builder().name("file_name").mimeType("mime_type").build();
         Task<ParseFile.State> task = controller.saveAsync(state, data, null, null, null);
         ParseFile.State result = ParseTaskUtils.wait(task);
 
@@ -174,11 +179,12 @@ public class ParseFileControllerTest {
         json.put("url", "http://example.com");
         String content = json.toString();
 
-        ParseHttpResponse mockResponse = new ParseHttpResponse.Builder()
-                .setStatusCode(200)
-                .setTotalSize((long) content.length())
-                .setContent(new ByteArrayInputStream(content.getBytes()))
-                .build();
+        ParseHttpResponse mockResponse =
+                new ParseHttpResponse.Builder()
+                        .setStatusCode(200)
+                        .setTotalSize((long) content.length())
+                        .setContent(new ByteArrayInputStream(content.getBytes()))
+                        .build();
 
         ParseHttpClient restClient = mock(ParseHttpClient.class);
         when(restClient.execute(any(ParseHttpRequest.class))).thenReturn(mockResponse);
@@ -188,11 +194,50 @@ public class ParseFileControllerTest {
 
         File file = new File(root, "test");
         ParseFileUtils.writeStringToFile(file, "content", "UTF-8");
-        ParseFile.State state = new ParseFile.State.Builder()
-                .name("file_name")
-                .mimeType("mime_type")
-                .build();
+        ParseFile.State state =
+                new ParseFile.State.Builder().name("file_name").mimeType("mime_type").build();
         Task<ParseFile.State> task = controller.saveAsync(state, file, null, null, null);
+        ParseFile.State result = ParseTaskUtils.wait(task);
+
+        verify(restClient, times(1)).execute(any(ParseHttpRequest.class));
+        assertEquals("new_file_name", result.name());
+        assertEquals("http://example.com", result.url());
+        File cachedFile = new File(root, "new_file_name");
+        assertTrue(cachedFile.exists());
+        assertTrue(file.exists());
+        assertEquals("content", ParseFileUtils.readFileToString(cachedFile, "UTF-8"));
+    }
+
+    @Test
+    public void testSaveAsyncSuccessWithUri() throws Exception {
+        JSONObject json = new JSONObject();
+        json.put("name", "new_file_name");
+        json.put("url", "http://example.com");
+        String content = json.toString();
+
+        ParseHttpResponse mockResponse =
+                new ParseHttpResponse.Builder()
+                        .setStatusCode(200)
+                        .setTotalSize((long) content.length())
+                        .setContent(new ByteArrayInputStream(content.getBytes()))
+                        .build();
+
+        ParseHttpClient restClient = mock(ParseHttpClient.class);
+        when(restClient.execute(any(ParseHttpRequest.class))).thenReturn(mockResponse);
+
+        File root = temporaryFolder.getRoot();
+        ParseFileController controller = new ParseFileController(restClient, root);
+
+        File file = new File(root, "test");
+        ParseFileUtils.writeStringToFile(file, "content", "UTF-8");
+        Uri uri = mock(Uri.class);
+        ContentResolver contentResolver = mock(ContentResolver.class);
+        when(plugins.applicationContext().getContentResolver()).thenReturn(contentResolver);
+        when(contentResolver.openInputStream(uri))
+                .thenReturn(new ByteArrayInputStream("content".getBytes()));
+        ParseFile.State state =
+                new ParseFile.State.Builder().name("file_name").mimeType("mime_type").build();
+        Task<ParseFile.State> task = controller.saveAsync(state, uri, null, null, null);
         ParseFile.State result = ParseTaskUtils.wait(task);
 
         verify(restClient, times(1)).execute(any(ParseHttpRequest.class));
@@ -216,8 +261,7 @@ public class ParseFileControllerTest {
         ParseFileController controller = new ParseFileController(restClient, root);
 
         byte[] data = "hello".getBytes();
-        ParseFile.State state = new ParseFile.State.Builder()
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().build();
         Task<ParseFile.State> task = controller.saveAsync(state, data, null, null, null);
         task.waitForCompletion();
 
@@ -242,8 +286,7 @@ public class ParseFileControllerTest {
         ParseFileController controller = new ParseFileController(restClient, root);
 
         File file = temporaryFolder.newFile("test");
-        ParseFile.State state = new ParseFile.State.Builder()
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().build();
         Task<ParseFile.State> task = controller.saveAsync(state, file, null, null, null);
         task.waitForCompletion();
 
@@ -258,9 +301,9 @@ public class ParseFileControllerTest {
         assertTrue(file.exists());
     }
 
-    //endregion
+    // endregion
 
-    //region testFetchAsync
+    // region testFetchAsync
 
     @Test
     public void testFetchAsyncRequest() {
@@ -290,9 +333,7 @@ public class ParseFileControllerTest {
         File file = new File(root, "cached_file_name");
         ParseFileUtils.writeStringToFile(file, "hello", "UTF-8");
 
-        ParseFile.State state = new ParseFile.State.Builder()
-                .name("cached_file_name")
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().name("cached_file_name").build();
         Task<File> task = controller.fetchAsync(state, null, null, null);
         File result = ParseTaskUtils.wait(task);
 
@@ -304,11 +345,12 @@ public class ParseFileControllerTest {
     @Test
     public void testFetchAsyncSuccess() throws Exception {
         byte[] data = "hello".getBytes();
-        ParseHttpResponse mockResponse = new ParseHttpResponse.Builder()
-                .setStatusCode(200)
-                .setTotalSize((long) data.length)
-                .setContent(new ByteArrayInputStream(data))
-                .build();
+        ParseHttpResponse mockResponse =
+                new ParseHttpResponse.Builder()
+                        .setStatusCode(200)
+                        .setTotalSize((long) data.length)
+                        .setContent(new ByteArrayInputStream(data))
+                        .build();
 
         ParseHttpClient fileClient = mock(ParseHttpClient.class);
         when(fileClient.execute(any(ParseHttpRequest.class))).thenReturn(mockResponse);
@@ -317,10 +359,7 @@ public class ParseFileControllerTest {
         assertFalse(root.exists());
         ParseFileController controller = new ParseFileController(null, root).fileClient(fileClient);
 
-        ParseFile.State state = new ParseFile.State.Builder()
-                .name("file_name")
-                .url("url")
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().name("file_name").url("url").build();
         Task<File> task = controller.fetchAsync(state, null, null, null);
         File result = ParseTaskUtils.wait(task);
 
@@ -342,9 +381,7 @@ public class ParseFileControllerTest {
         ParseFileController controller = new ParseFileController(null, root).fileClient(fileClient);
 
         // We need to set url to make getTempFile() work and check it
-        ParseFile.State state = new ParseFile.State.Builder()
-                .url("test")
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().url("test").build();
         Task<File> task = controller.fetchAsync(state, null, null, null);
         task.waitForCompletion();
 
@@ -358,5 +395,67 @@ public class ParseFileControllerTest {
         assertFalse(controller.getTempFile(state).exists());
     }
 
-    //endregion
+    @Test
+    public void testFetchAsyncConcurrentCallsSuccess() throws Exception {
+        byte[] data = "hello".getBytes();
+        ParseHttpResponse mockResponse =
+                new ParseHttpResponse.Builder()
+                        .setStatusCode(200)
+                        .setTotalSize((long) data.length)
+                        .setContent(new ByteArrayInputStream(data))
+                        .build();
+
+        ParseHttpClient fileClient = mock(ParseHttpClient.class);
+        when(fileClient.execute(any(ParseHttpRequest.class))).thenReturn(mockResponse);
+        // Make sure cache dir does not exist
+        File root = new File(temporaryFolder.getRoot(), "cache");
+        assertFalse(root.exists());
+        ParseFileController controller = new ParseFileController(null, root).fileClient(fileClient);
+        ParseFile.State state = new ParseFile.State.Builder().name("file_name").url("url").build();
+        CountDownLatch countDownLatch = new CountDownLatch(2);
+        AtomicReference<File> file1Ref = new AtomicReference<>();
+        AtomicReference<File> file2Ref = new AtomicReference<>();
+
+        new Thread(
+                        () -> {
+                            try {
+                                file1Ref.set(
+                                        ParseTaskUtils.wait(
+                                                controller.fetchAsync(state, null, null, null)));
+                            } catch (ParseException e) {
+                                throw new RuntimeException(e);
+                            } finally {
+                                countDownLatch.countDown();
+                            }
+                        })
+                .start();
+
+        new Thread(
+                        () -> {
+                            try {
+                                file2Ref.set(
+                                        ParseTaskUtils.wait(
+                                                controller.fetchAsync(state, null, null, null)));
+                            } catch (ParseException e) {
+                                throw new RuntimeException(e);
+                            } finally {
+                                countDownLatch.countDown();
+                            }
+                        })
+                .start();
+
+        countDownLatch.await();
+
+        File result1 = file1Ref.get();
+        File result2 = file2Ref.get();
+
+        assertTrue(result1.exists());
+        assertEquals("hello", ParseFileUtils.readFileToString(result1, "UTF-8"));
+        assertTrue(result2.exists());
+        assertEquals("hello", ParseFileUtils.readFileToString(result2, "UTF-8"));
+        verify(fileClient, times(1)).execute(any(ParseHttpRequest.class));
+        assertFalse(controller.getTempFile(state).exists());
+    }
+
+    // endregion
 }

@@ -1,17 +1,23 @@
 package com.parse.fcm;
 
+import androidx.annotation.NonNull;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.parse.PLog;
 import com.parse.PushRouter;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class ParseFirebaseMessagingService extends FirebaseMessagingService {
 
     @Override
-    public void onMessageReceived(RemoteMessage remoteMessage) {
+    public void onNewToken(@NonNull String token) {
+        super.onNewToken(token);
+        ParseFCM.register(token);
+    }
+
+    @Override
+    public void onMessageReceived(@NonNull RemoteMessage remoteMessage) {
         super.onMessageReceived(remoteMessage);
         PLog.d(ParseFCM.TAG, "onMessageReceived");
 
@@ -25,7 +31,10 @@ public class ParseFirebaseMessagingService extends FirebaseMessagingService {
             try {
                 data = new JSONObject(dataString);
             } catch (JSONException e) {
-                PLog.e(ParseFCM.TAG, "Ignoring push because of JSON exception while processing: " + dataString, e);
+                PLog.e(
+                        ParseFCM.TAG,
+                        "Ignoring push because of JSON exception while processing: " + dataString,
+                        e);
                 return;
             }
         }

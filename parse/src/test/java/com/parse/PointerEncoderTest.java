@@ -8,17 +8,16 @@
  */
 package com.parse;
 
+import static org.junit.Assert.assertNotNull;
+
 import org.json.JSONObject;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import static org.junit.Assert.assertNotNull;
-
 public class PointerEncoderTest {
 
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
+    @Rule public final ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void testEncodeRelatedObjectWithoutObjectId() {

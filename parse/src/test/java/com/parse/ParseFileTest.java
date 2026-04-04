@@ -8,8 +8,27 @@
  */
 package com.parse;
 
-import android.os.Parcel;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import android.net.Uri;
+import android.os.Parcel;
+import com.parse.boltsinternal.Task;
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.InputStream;
+import java.util.Arrays;
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -17,46 +36,29 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Matchers;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-
-import java.io.File;
-import java.io.InputStream;
-import java.util.Arrays;
-import java.util.List;
-
-import bolts.Task;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import org.robolectric.RuntimeEnvironment;
+import org.robolectric.Shadows;
+import org.robolectric.shadows.ShadowContentResolver;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
 public class ParseFileTest {
 
-    @Rule
-    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+    @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Before
     public void setup() {
         ParseCorePlugins.getInstance().reset();
         ParseTestUtils.setTestParseUser();
+        ParsePlugins plugins = mock(ParsePlugins.class);
+        when(plugins.applicationContext()).thenReturn(RuntimeEnvironment.application);
+        ParsePlugins.set(plugins);
     }
 
     @After
     public void tearDown() {
         ParseCorePlugins.getInstance().reset();
+        ParsePlugins.reset();
     }
 
     @Test
@@ -65,6 +67,7 @@ public class ParseFileTest {
         byte[] data = "hello".getBytes();
         String contentType = "content_type";
         File file = temporaryFolder.newFile(name);
+        Uri uri = Uri.fromFile(file);
 
         // TODO(mengyan): After we have proper staging strategy, we should verify the staging file's
         // content is the same with the original file.
@@ -76,12 +79,12 @@ public class ParseFileTest {
 
         parseFile = new ParseFile(data);
         assertEquals("file", parseFile.getName()); // Default
-        assertEquals(null, parseFile.getState().mimeType());
+        assertNull(parseFile.getState().mimeType());
         assertTrue(parseFile.isDirty());
 
         parseFile = new ParseFile(name, data);
         assertEquals("name", parseFile.getName());
-        assertEquals(null, parseFile.getState().mimeType());
+        assertNull(parseFile.getState().mimeType());
         assertTrue(parseFile.isDirty());
 
         parseFile = new ParseFile(data, contentType);
@@ -91,17 +94,22 @@ public class ParseFileTest {
 
         parseFile = new ParseFile(file);
         assertEquals(name, parseFile.getName()); // Default
-        assertEquals(null, parseFile.getState().mimeType());
+        assertNull(parseFile.getState().mimeType());
         assertTrue(parseFile.isDirty());
 
         parseFile = new ParseFile(file, contentType);
         assertEquals(name, parseFile.getName()); // Default
         assertEquals("content_type", parseFile.getState().mimeType());
+
+        parseFile = new ParseFile(name, uri, contentType);
+        assertEquals(name, parseFile.getName());
+        assertEquals("content_type", parseFile.getState().mimeType());
     }
 
     @Test
     public void testGetters() {
-        ParseFile file = new ParseFile(new ParseFile.State.Builder().url("http://example.com").build());
+        ParseFile file =
+                new ParseFile(new ParseFile.State.Builder().url("http://example.com").build());
         assertEquals("http://example.com", file.getUrl());
         assertFalse(file.isDirty());
 
@@ -129,7 +137,7 @@ public class ParseFileTest {
         verify(controller).isDataAvailable(state);
     }
 
-    //region testSaveAsync
+    // region testSaveAsync
 
     @Test
     public void testSaveAsyncNotDirty() throws Exception {
@@ -144,12 +152,13 @@ public class ParseFileTest {
         Task<Void> task = file.saveAsync(null, null, null);
         ParseTaskUtils.wait(task);
 
-        verify(controller, never()).saveAsync(
-                any(ParseFile.State.class),
-                any(byte[].class),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any());
+        verify(controller, never())
+                .saveAsync(
+                        any(ParseFile.State.class),
+                        any(byte[].class),
+                        any(String.class),
+                        any(ProgressCallback.class),
+                        any());
     }
 
     @Test
@@ -166,12 +175,13 @@ public class ParseFileTest {
         task.waitForCompletion();
         assertTrue(task.isCancelled());
 
-        verify(controller, never()).saveAsync(
-                any(ParseFile.State.class),
-                any(byte[].class),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any());
+        verify(controller, never())
+                .saveAsync(
+                        any(ParseFile.State.class),
+                        any(byte[].class),
+                        any(String.class),
+                        any(ProgressCallback.class),
+                        any());
     }
 
     @Test
@@ -180,30 +190,31 @@ public class ParseFileTest {
         byte[] data = "hello".getBytes();
         String contentType = "content_type";
         String url = "url";
-        ParseFile.State state = new ParseFile.State.Builder()
-                .url(url)
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().url(url).build();
         ParseFileController controller = mock(ParseFileController.class);
         when(controller.saveAsync(
-                any(ParseFile.State.class),
-                any(byte[].class),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any())).thenReturn(Task.forResult(state));
+                        any(ParseFile.State.class),
+                        any(byte[].class),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        nullable(Task.class)))
+                .thenReturn(Task.forResult(state));
         ParseCorePlugins.getInstance().registerFileController(controller);
 
         ParseFile parseFile = new ParseFile(name, data, contentType);
         ParseTaskUtils.wait(parseFile.saveAsync(null, null, null));
 
         // Verify controller get the correct data
-        ArgumentCaptor<ParseFile.State> stateCaptor = ArgumentCaptor.forClass(ParseFile.State.class);
+        ArgumentCaptor<ParseFile.State> stateCaptor =
+                ArgumentCaptor.forClass(ParseFile.State.class);
         ArgumentCaptor<byte[]> dataCaptor = ArgumentCaptor.forClass(byte[].class);
-        verify(controller, times(1)).saveAsync(
-                stateCaptor.capture(),
-                dataCaptor.capture(),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any());
+        verify(controller, times(1))
+                .saveAsync(
+                        stateCaptor.capture(),
+                        dataCaptor.capture(),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        nullable(Task.class));
         assertNull(stateCaptor.getValue().url());
         assertEquals(name, stateCaptor.getValue().name());
         assertEquals(contentType, stateCaptor.getValue().mimeType());
@@ -218,30 +229,31 @@ public class ParseFileTest {
         File file = temporaryFolder.newFile(name);
         String contentType = "content_type";
         String url = "url";
-        ParseFile.State state = new ParseFile.State.Builder()
-                .url(url)
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().url(url).build();
         ParseFileController controller = mock(ParseFileController.class);
         when(controller.saveAsync(
-                any(ParseFile.State.class),
-                any(File.class),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any())).thenReturn(Task.forResult(state));
+                        any(ParseFile.State.class),
+                        any(File.class),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        nullable(Task.class)))
+                .thenReturn(Task.forResult(state));
         ParseCorePlugins.getInstance().registerFileController(controller);
 
         ParseFile parseFile = new ParseFile(file, contentType);
         ParseTaskUtils.wait(parseFile.saveAsync(null, null, null));
 
         // Verify controller get the correct data
-        ArgumentCaptor<ParseFile.State> stateCaptor = ArgumentCaptor.forClass(ParseFile.State.class);
+        ArgumentCaptor<ParseFile.State> stateCaptor =
+                ArgumentCaptor.forClass(ParseFile.State.class);
         ArgumentCaptor<File> fileCaptor = ArgumentCaptor.forClass(File.class);
-        verify(controller, times(1)).saveAsync(
-                stateCaptor.capture(),
-                fileCaptor.capture(),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any());
+        verify(controller, times(1))
+                .saveAsync(
+                        stateCaptor.capture(),
+                        fileCaptor.capture(),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        nullable(Task.class));
         assertNull(stateCaptor.getValue().url());
         assertEquals(name, stateCaptor.getValue().name());
         assertEquals(contentType, stateCaptor.getValue().mimeType());
@@ -250,14 +262,55 @@ public class ParseFileTest {
         assertEquals(url, parseFile.getUrl());
     }
 
+    @Test
+    public void testSaveAsyncSuccessWithUri() throws Exception {
+        String name = "name";
+        File file = temporaryFolder.newFile(name);
+        Uri uri = Uri.fromFile(file);
+        ShadowContentResolver shadowContentResolver =
+                Shadows.shadowOf(RuntimeEnvironment.application.getContentResolver());
+        shadowContentResolver.registerInputStream(uri, new ByteArrayInputStream(new byte[0]));
+        String contentType = "content_type";
+        String url = "url";
+        ParseFile.State state = new ParseFile.State.Builder().url(url).build();
+        ParseFileController controller = mock(ParseFileController.class);
+        when(controller.saveAsync(
+                        any(ParseFile.State.class),
+                        any(Uri.class),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        nullable(Task.class)))
+                .thenReturn(Task.forResult(state));
+        ParseCorePlugins.getInstance().registerFileController(controller);
+
+        ParseFile parseFile = new ParseFile(name, uri, contentType);
+        ParseTaskUtils.wait(parseFile.saveAsync(null, null, null));
+
+        // Verify controller get the correct data
+        ArgumentCaptor<ParseFile.State> stateCaptor =
+                ArgumentCaptor.forClass(ParseFile.State.class);
+        ArgumentCaptor<Uri> uriCaptor = ArgumentCaptor.forClass(Uri.class);
+        verify(controller, times(1))
+                .saveAsync(
+                        stateCaptor.capture(),
+                        uriCaptor.capture(),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        nullable(Task.class));
+        assertNull(stateCaptor.getValue().url());
+        assertEquals(name, stateCaptor.getValue().name());
+        assertEquals(contentType, stateCaptor.getValue().mimeType());
+        assertEquals(uri, uriCaptor.getValue()); // Verify the state of ParseFile has been updated
+        assertEquals(url, parseFile.getUrl());
+    }
+
     // TODO(grantland): testSaveAsyncNotDirtyAfterQueueAwait
     // TODO(grantland): testSaveAsyncSuccess
     // TODO(grantland): testSaveAsyncFailure
 
-    //endregion
+    // endregion
 
-
-    //region testGetDataAsync
+    // region testGetDataAsync
 
     @Test
     public void testGetDataAsyncSuccess() throws Exception {
@@ -266,28 +319,28 @@ public class ParseFileTest {
         ParseFileUtils.writeStringToFile(file, content, "UTF-8");
         ParseFileController controller = mock(ParseFileController.class);
         when(controller.fetchAsync(
-                any(ParseFile.State.class),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any())).thenReturn(Task.forResult(file));
+                        any(ParseFile.State.class),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        any(Task.class)))
+                .thenReturn(Task.forResult(file));
         ParseCorePlugins.getInstance().registerFileController(controller);
 
         String url = "url";
-        ParseFile.State state = new ParseFile.State.Builder()
-                .url(url)
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().url(url).build();
         ParseFile parseFile = new ParseFile(state);
 
         byte[] data = ParseTaskUtils.wait(parseFile.getDataInBackground());
 
         // Verify controller get the correct data
-        ArgumentCaptor<ParseFile.State> stateCaptor = ArgumentCaptor.forClass(ParseFile.State.class);
-        verify(controller, times(1)).fetchAsync(
-                stateCaptor.capture(),
-                anyString(),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any()
-        );
+        ArgumentCaptor<ParseFile.State> stateCaptor =
+                ArgumentCaptor.forClass(ParseFile.State.class);
+        verify(controller, times(1))
+                .fetchAsync(
+                        stateCaptor.capture(),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        any(Task.class));
         assertEquals(url, stateCaptor.getValue().url());
         // Verify the data we get is correct
         assertArrayEquals(content.getBytes(), data);
@@ -298,12 +351,12 @@ public class ParseFileTest {
         // Verify controller get the correct data
         ArgumentCaptor<ParseFile.State> stateCaptorAgain =
                 ArgumentCaptor.forClass(ParseFile.State.class);
-        verify(controller, times(2)).fetchAsync(
-                stateCaptorAgain.capture(),
-                anyString(),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any()
-        );
+        verify(controller, times(2))
+                .fetchAsync(
+                        stateCaptorAgain.capture(),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        any(Task.class));
         assertEquals(url, stateCaptorAgain.getValue().url());
         // Verify the data we get is correct
         assertArrayEquals(content.getBytes(), dataAgain);
@@ -316,28 +369,28 @@ public class ParseFileTest {
         ParseFileUtils.writeStringToFile(file, content, "UTF-8");
         ParseFileController controller = mock(ParseFileController.class);
         when(controller.fetchAsync(
-                any(ParseFile.State.class),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any())).thenReturn(Task.forResult(file));
+                        any(ParseFile.State.class),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        any(Task.class)))
+                .thenReturn(Task.forResult(file));
         ParseCorePlugins.getInstance().registerFileController(controller);
 
         String url = "url";
-        ParseFile.State state = new ParseFile.State.Builder()
-                .url(url)
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().url(url).build();
         ParseFile parseFile = new ParseFile(state);
 
         InputStream dataStream = ParseTaskUtils.wait(parseFile.getDataStreamInBackground());
 
         // Verify controller get the correct data
-        ArgumentCaptor<ParseFile.State> stateCaptor = ArgumentCaptor.forClass(ParseFile.State.class);
-        verify(controller, times(1)).fetchAsync(
-                stateCaptor.capture(),
-                anyString(),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any()
-        );
+        ArgumentCaptor<ParseFile.State> stateCaptor =
+                ArgumentCaptor.forClass(ParseFile.State.class);
+        verify(controller, times(1))
+                .fetchAsync(
+                        stateCaptor.capture(),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        any(Task.class));
         assertEquals(url, stateCaptor.getValue().url());
         // Verify the data we get is correct
         assertArrayEquals(content.getBytes(), ParseIOUtils.toByteArray(dataStream));
@@ -348,12 +401,12 @@ public class ParseFileTest {
         // Verify controller get the correct data
         ArgumentCaptor<ParseFile.State> stateCaptorAgain =
                 ArgumentCaptor.forClass(ParseFile.State.class);
-        verify(controller, times(2)).fetchAsync(
-                stateCaptorAgain.capture(),
-                anyString(),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any()
-        );
+        verify(controller, times(2))
+                .fetchAsync(
+                        stateCaptorAgain.capture(),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        any(Task.class));
         assertEquals(url, stateCaptorAgain.getValue().url());
         // Verify the data we get is correct
         assertArrayEquals(content.getBytes(), ParseIOUtils.toByteArray(dataStreamAgain));
@@ -366,28 +419,28 @@ public class ParseFileTest {
         ParseFileUtils.writeStringToFile(file, content, "UTF-8");
         ParseFileController controller = mock(ParseFileController.class);
         when(controller.fetchAsync(
-                any(ParseFile.State.class),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any())).thenReturn(Task.forResult(file));
+                        any(ParseFile.State.class),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        any(Task.class)))
+                .thenReturn(Task.forResult(file));
         ParseCorePlugins.getInstance().registerFileController(controller);
 
         String url = "url";
-        ParseFile.State state = new ParseFile.State.Builder()
-                .url(url)
-                .build();
+        ParseFile.State state = new ParseFile.State.Builder().url(url).build();
         ParseFile parseFile = new ParseFile(state);
 
         File fetchedFile = ParseTaskUtils.wait(parseFile.getFileInBackground());
 
         // Verify controller get the correct data
-        ArgumentCaptor<ParseFile.State> stateCaptor = ArgumentCaptor.forClass(ParseFile.State.class);
-        verify(controller, times(1)).fetchAsync(
-                stateCaptor.capture(),
-                anyString(),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any()
-        );
+        ArgumentCaptor<ParseFile.State> stateCaptor =
+                ArgumentCaptor.forClass(ParseFile.State.class);
+        verify(controller, times(1))
+                .fetchAsync(
+                        stateCaptor.capture(),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        any(Task.class));
         assertEquals(url, stateCaptor.getValue().url());
         // Verify the data we get is correct
         assertArrayEquals(content.getBytes(), ParseFileUtils.readFileToByteArray(fetchedFile));
@@ -398,18 +451,18 @@ public class ParseFileTest {
         // Verify controller get the correct data
         ArgumentCaptor<ParseFile.State> stateCaptorAgain =
                 ArgumentCaptor.forClass(ParseFile.State.class);
-        verify(controller, times(2)).fetchAsync(
-                stateCaptorAgain.capture(),
-                anyString(),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any()
-        );
+        verify(controller, times(2))
+                .fetchAsync(
+                        stateCaptorAgain.capture(),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        any(Task.class));
         assertEquals(url, stateCaptorAgain.getValue().url());
         // Verify the data we get is correct
         assertArrayEquals(content.getBytes(), ParseFileUtils.readFileToByteArray(fetchedFileAgain));
     }
 
-    //endregion
+    // endregion
 
     @Test
     public void testTaskQueuedMethods() throws Exception {
@@ -418,22 +471,25 @@ public class ParseFileTest {
 
         ParseFileController controller = mock(ParseFileController.class);
         when(controller.saveAsync(
-                any(ParseFile.State.class),
-                any(byte[].class),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any())).thenReturn(Task.forResult(state));
+                        any(ParseFile.State.class),
+                        any(byte[].class),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        nullable(Task.class)))
+                .thenReturn(Task.forResult(state));
         when(controller.saveAsync(
-                any(ParseFile.State.class),
-                any(File.class),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any())).thenReturn(Task.forResult(state));
+                        any(ParseFile.State.class),
+                        nullable(File.class),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        nullable(Task.class)))
+                .thenReturn(Task.forResult(state));
         when(controller.fetchAsync(
-                any(ParseFile.State.class),
-                any(String.class),
-                any(ProgressCallback.class),
-                Matchers.<Task<Void>>any())).thenReturn(Task.forResult(cachedFile));
+                        any(ParseFile.State.class),
+                        nullable(String.class),
+                        nullable(ProgressCallback.class),
+                        nullable(Task.class)))
+                .thenReturn(Task.forResult(cachedFile));
 
         ParseCorePlugins.getInstance().registerFileController(controller);
 
@@ -478,15 +534,15 @@ public class ParseFileTest {
         TaskQueueTestHelper queueHelper = new TaskQueueTestHelper(file.taskQueue);
         queueHelper.enqueue();
 
-        List<Task<Void>> saveTasks = Arrays.asList(
-                file.saveInBackground(),
-                file.saveInBackground(),
-                file.saveInBackground());
+        List<Task<Void>> saveTasks =
+                Arrays.asList(
+                        file.saveInBackground(), file.saveInBackground(), file.saveInBackground());
 
-        List<Task<byte[]>> getDataTasks = Arrays.asList(
-                file.getDataInBackground(),
-                file.getDataInBackground(),
-                file.getDataInBackground());
+        List<Task<byte[]>> getDataTasks =
+                Arrays.asList(
+                        file.getDataInBackground(),
+                        file.getDataInBackground(),
+                        file.getDataInBackground());
 
         file.cancel();
         queueHelper.dequeue();
@@ -504,11 +560,9 @@ public class ParseFileTest {
         String mime = "mime";
         String name = "name";
         String url = "url";
-        ParseFile file = new ParseFile(new ParseFile.State.Builder()
-                .name(name)
-                .mimeType(mime)
-                .url(url)
-                .build());
+        ParseFile file =
+                new ParseFile(
+                        new ParseFile.State.Builder().name(name).mimeType(mime).url(url).build());
         Parcel parcel = Parcel.obtain();
         file.writeToParcel(parcel, 0);
         parcel.setDataPosition(0);

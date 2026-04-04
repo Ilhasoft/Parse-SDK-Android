@@ -1,5 +1,7 @@
-apply plugin: 'com.android.library'
-apply plugin: 'com.github.kt3k.coveralls'
+apply plugin: "com.android.library"
+apply plugin: "maven-publish"
+apply plugin: "io.freefair.android-javadoc-jar"
+apply plugin: "io.freefair.android-sources-jar"
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -7,13 +9,13 @@ android {
     defaultConfig {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
-        consumerProguardFiles 'release-proguard.pro'
+        consumerProguardFiles "release-proguard.pro"
     }
 
-    packagingOptions {
-        exclude '**/BuildConfig.class'
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
     }
 
     lintOptions {
@@ -23,66 +25,79 @@ android {
     buildTypes {
         debug {
             testCoverageEnabled = true
+            buildConfigField("String","PARSE_VERSION","\"${version}\"")
         }
+        release {
+            minifyEnabled false
+            testCoverageEnabled = false
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            buildConfigField("String","PARSE_VERSION","\"${version}\"")
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 
 ext {
-    okhttpVersion = '3.11.0'
+    okhttpVersion = "4.10.0"
 }
 
 dependencies {
-    api "com.android.support:support-annotations:$supportLibVersion"
-    api "com.android.support:support-compat:$supportLibVersion"
-    api 'com.parse.bolts:bolts-tasks:1.4.0'
+    api "androidx.annotation:annotation:1.4.0"
+    api "androidx.core:core:1.8.0"
     api "com.squareup.okhttp3:okhttp:$okhttpVersion"
+    api project(':bolts-tasks')
 
-    testImplementation 'org.robolectric:robolectric:3.8'
-    testImplementation 'org.skyscreamer:jsonassert:1.5.0'
-    testImplementation 'org.mockito:mockito-core:1.10.19'
+    testImplementation "org.junit.jupiter:junit-jupiter:$rootProject.ext.jupiterVersion"
+    testImplementation "org.skyscreamer:jsonassert:1.5.0"
+    testImplementation "junit:junit:$rootProject.ext.junitVersion"
+    testImplementation "org.mockito:mockito-core:$rootProject.ext.mockitoCoreVersion"
+    testImplementation "org.robolectric:robolectric:$rootProject.ext.robolectricVersion"
     testImplementation "com.squareup.okhttp3:mockwebserver:$okhttpVersion"
 }
 
-//region Code Coverage
+//region Publishing
 
-apply plugin: 'jacoco'
-
-jacoco {
-    toolVersion "0.7.1.201405082137"
-}
-
-task jacocoTestReport(type: JacocoReport, dependsOn: "testDebugUnitTest") {
-    group = "Reporting"
-    description = "Generate Jacoco coverage reports"
-
-    classDirectories = fileTree(
-            dir: "${buildDir}/intermediates/classes/debug",
-            excludes: ['**/R.class',
-                       '**/R$*.class',
-                       '**/*$ViewInjector*.*',
-                       '**/BuildConfig.*',
-                       '**/Manifest*.*']
-    )
-
-    sourceDirectories = files("${buildDir.parent}/src/main/java")
-    additionalSourceDirs = files([
-            "${buildDir}/generated/source/buildConfig/debug",
-            "${buildDir}/generated/source/r/debug"
-    ])
-    executionData = files("${buildDir}/jacoco/testDebugUnitTest.exec")
-
-    reports {
-        xml.enabled = true
-        html.enabled = true
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+            }
+        }
     }
 }
 
 //endregion
 
-//region Coveralls
+//region Code Coverage
 
-coveralls.jacocoReportPath = "${buildDir}/reports/jacoco/jacocoTestReport/jacocoTestReport.xml"
+apply plugin: "com.dicedmelon.gradle.jacoco-android"
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+tasks.withType(Test) {
+    jacoco.includeNoLocationClasses = true
+    jacoco.excludes = ['jdk.internal.*']
+    testLogging {
+        events "SKIPPED", "FAILED"
+        showStandardStreams true
+        showExceptions true
+        showCauses true
+        showStackTraces true
+        exceptionFormat "full"
+    }
+}
+
+jacocoAndroidUnitTestReport {
+    csv.enabled false
+    html.enabled true
+    xml.enabled true
+}
 
 //endregion
-
-apply from: 'https://raw.githubusercontent.com/Commit451/gradle-android-javadocs/1.1.0/gradle-android-javadocs.gradle'

@@ -16,6 +16,8 @@
 
 package com.parse;
 
+import java.util.Objects;
+
 /* package */ class ParseTextUtils {
 
     private ParseTextUtils() {
@@ -25,8 +27,8 @@ package com.parse;
     /**
      * Returns a string containing the tokens joined by delimiters.
      *
-     * @param tokens an array objects to be joined. Strings will be formed from
-     *               the objects by calling object.toString().
+     * @param tokens an array objects to be joined. Strings will be formed from the objects by
+     *     calling object.toString().
      */
     /* package */
     static String join(CharSequence delimiter, Iterable tokens) {
@@ -55,14 +57,15 @@ package com.parse;
 
     /**
      * Returns true if a and b are equal, including if they are both null.
-     * <p><i>Note: In platform versions 1.1 and earlier, this method only worked well if
-     * both the arguments were instances of String.</i></p>
+     *
+     * <p><i>Note: In platform versions 1.1 and earlier, this method only worked well if both the
+     * arguments were instances of String.</i>
      *
      * @param a first CharSequence to check
      * @param b second CharSequence to check
      * @return true if a and b are equal
      */
     public static boolean equals(CharSequence a, CharSequence b) {
-        return (a == b) || (a != null && a.equals(b));
+        return Objects.equals(a, b);
     }
 }

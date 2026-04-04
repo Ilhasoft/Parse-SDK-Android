@@ -8,6 +8,22 @@
  */
 package com.parse;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.parse.boltsinternal.Task;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.Map;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -15,28 +31,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
-
-import bolts.Task;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 // For android.net.Uri
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
 public class ParseAnalyticsControllerTest {
 
     @Before
@@ -49,7 +46,7 @@ public class ParseAnalyticsControllerTest {
         ParseRESTCommand.server = null;
     }
 
-    //region testConstructor
+    // region testConstructor
 
     @Test
     public void testConstructor() {
@@ -58,15 +55,15 @@ public class ParseAnalyticsControllerTest {
         assertSame(queue, controller.eventuallyQueue);
     }
 
-    //endregion
+    // endregion
 
-    //region trackEventInBackground
+    // region trackEventInBackground
 
     @Test
     public void testTrackEvent() throws Exception {
         // Mock eventually queue
         ParseEventuallyQueue queue = mock(ParseEventuallyQueue.class);
-        when(queue.enqueueEventuallyAsync(any(ParseRESTCommand.class), any(ParseObject.class)))
+        when(queue.enqueueEventuallyAsync(any(ParseRESTCommand.class), nullable(ParseObject.class)))
                 .thenReturn(Task.forResult(new JSONObject()));
 
         // Execute
@@ -92,15 +89,15 @@ public class ParseAnalyticsControllerTest {
         assertEquals(1, jsonDimensions.length());
     }
 
-    //endregion
+    // endregion
 
-    //region trackAppOpenedInBackground
+    // region trackAppOpenedInBackground
 
     @Test
     public void testTrackAppOpened() throws Exception {
         // Mock eventually queue
         ParseEventuallyQueue queue = mock(ParseEventuallyQueue.class);
-        when(queue.enqueueEventuallyAsync(any(ParseRESTCommand.class), any(ParseObject.class)))
+        when(queue.enqueueEventuallyAsync(any(ParseRESTCommand.class), nullable(ParseObject.class)))
                 .thenReturn(Task.forResult(new JSONObject()));
 
         // Execute
@@ -115,13 +112,13 @@ public class ParseAnalyticsControllerTest {
         // Verify eventuallyQueue.enqueueEventuallyAsync object parameter
         assertNull(object.getValue());
 
-
         // Verify eventuallyQueue.enqueueEventuallyAsync command parameter
         assertTrue(command.getValue() instanceof ParseRESTAnalyticsCommand);
-        assertTrue(command.getValue().httpPath.contains(ParseRESTAnalyticsCommand.EVENT_APP_OPENED));
+        assertTrue(
+                command.getValue().httpPath.contains(ParseRESTAnalyticsCommand.EVENT_APP_OPENED));
         assertEquals("sessionToken", command.getValue().getSessionToken());
         assertEquals("pushHash", command.getValue().jsonParameters.get("push_hash"));
     }
 
-    //endregion
+    // endregion
 }

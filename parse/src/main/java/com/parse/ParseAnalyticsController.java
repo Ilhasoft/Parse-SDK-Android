@@ -8,32 +8,30 @@
  */
 package com.parse;
 
-import org.json.JSONObject;
-
+import com.parse.boltsinternal.Task;
 import java.util.Map;
-
-import bolts.Task;
+import org.json.JSONObject;
 
 class ParseAnalyticsController {
 
-    /* package for test */ ParseEventuallyQueue eventuallyQueue;
+    /* package for test */ final ParseEventuallyQueue eventuallyQueue;
 
     public ParseAnalyticsController(ParseEventuallyQueue eventuallyQueue) {
         this.eventuallyQueue = eventuallyQueue;
     }
 
-    public Task<Void> trackEventInBackground(final String name,
-                                             Map<String, String> dimensions, String sessionToken) {
-        ParseRESTCommand command = ParseRESTAnalyticsCommand.trackEventCommand(name, dimensions,
-                sessionToken);
+    public Task<Void> trackEventInBackground(
+            final String name, Map<String, String> dimensions, String sessionToken) {
+        ParseRESTCommand command =
+                ParseRESTAnalyticsCommand.trackEventCommand(name, dimensions, sessionToken);
 
         Task<JSONObject> eventuallyTask = eventuallyQueue.enqueueEventuallyAsync(command, null);
         return eventuallyTask.makeVoid();
     }
 
     public Task<Void> trackAppOpenedInBackground(String pushHash, String sessionToken) {
-        ParseRESTCommand command = ParseRESTAnalyticsCommand.trackAppOpenedCommand(pushHash,
-                sessionToken);
+        ParseRESTCommand command =
+                ParseRESTAnalyticsCommand.trackAppOpenedCommand(pushHash, sessionToken);
 
         Task<JSONObject> eventuallyTask = eventuallyQueue.enqueueEventuallyAsync(command, null);
         return eventuallyTask.makeVoid();

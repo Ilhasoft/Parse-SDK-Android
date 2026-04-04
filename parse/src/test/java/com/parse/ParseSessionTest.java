@@ -8,13 +8,12 @@
  */
 package com.parse;
 
+import static org.junit.Assert.assertTrue;
+
+import java.util.Collections;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-
-import java.util.Collections;
-
-import static org.junit.Assert.assertTrue;
 
 public class ParseSessionTest {
 
@@ -31,12 +30,7 @@ public class ParseSessionTest {
     @Test
     public void testImmutableKeys() {
         String[] immutableKeys = {
-                "sessionToken",
-                "createdWith",
-                "restricted",
-                "user",
-                "expiresAt",
-                "installationId"
+            "sessionToken", "createdWith", "restricted", "user", "expiresAt", "installationId"
         };
 
         ParseSession session = new ParseSession();

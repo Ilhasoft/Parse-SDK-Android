@@ -8,6 +8,27 @@
  */
 package com.parse;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.robolectric.annotation.LooperMode.Mode.PAUSED;
+import static org.robolectric.shadows.ShadowLooper.shadowMainLooper;
+import static org.skyscreamer.jsonassert.JSONAssert.assertEquals;
+
+import com.parse.boltsinternal.Capture;
+import com.parse.boltsinternal.Task;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
@@ -15,31 +36,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
+import org.robolectric.annotation.LooperMode;
 import org.skyscreamer.jsonassert.JSONCompareMode;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
-
-import bolts.Capture;
-import bolts.Task;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-import static org.skyscreamer.jsonassert.JSONAssert.assertEquals;
-
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
+@LooperMode(PAUSED)
 public class ParsePushTest {
 
     @Before
@@ -52,7 +53,7 @@ public class ParsePushTest {
         ParseCorePlugins.getInstance().reset();
     }
 
-    //region testSetChannel
+    // region testSetChannel
 
     // We only test a basic case here to make sure logic in ParsePush is correct, more comprehensive
     // builder test cases should be in ParsePushState test
@@ -70,9 +71,9 @@ public class ParsePushTest {
         assertTrue(state.channelSet().contains("test"));
     }
 
-    //endregion
+    // endregion
 
-    //region testSetChannels
+    // region testSetChannels
 
     // We only test a basic case here to make sure logic in ParsePush is correct, more comprehensive
     // builder test cases should be in ParsePushState test
@@ -94,9 +95,9 @@ public class ParsePushTest {
         assertTrue(state.channelSet().contains("testAgain"));
     }
 
-    //endregion
+    // endregion
 
-    //region testSetData
+    // region testSetData
 
     // We only test a basic case here to make sure logic in ParsePush is correct, more comprehensive
     // builder test cases should be in ParsePushState test
@@ -114,9 +115,9 @@ public class ParsePushTest {
         assertEquals(data, state.data(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
-    //endregion
+    // endregion
 
-    //region testSetData
+    // region testSetData
 
     // We only test a basic case here to make sure logic in ParsePush is correct, more comprehensive
     // builder test cases should be in ParsePushState test
@@ -132,9 +133,9 @@ public class ParsePushTest {
         assertEquals("test", data.getString(ParsePush.KEY_DATA_MESSAGE));
     }
 
-    //endregion
+    // endregion
 
-    //region testSetExpirationTime
+    // region testSetExpirationTime
 
     // We only test a basic case here to make sure logic in ParsePush is correct, more comprehensive
     // builder test cases should be in ParsePushState test
@@ -151,9 +152,9 @@ public class ParsePushTest {
         assertEquals(10000, state.expirationTime().longValue());
     }
 
-    //endregion
+    // endregion
 
-    //region testSetExpirationTimeInterval
+    // region testSetExpirationTimeInterval
 
     // We only test a basic case here to make sure logic in ParsePush is correct, more comprehensive
     // builder test cases should be in ParsePushState test
@@ -170,9 +171,9 @@ public class ParsePushTest {
         assertEquals(10000, state.expirationTimeInterval().longValue());
     }
 
-    //endregion
+    // endregion
 
-    //region testClearExpiration
+    // region testClearExpiration
 
     @Test
     public void testClearExpiration() {
@@ -204,9 +205,9 @@ public class ParsePushTest {
         assertNull(state.expirationTime());
     }
 
-    //endregion
+    // endregion
 
-    //region testSetPushTime
+    // region testSetPushTime
 
     // We only test a basic case here to make sure logic in ParsePush is correct, more comprehensive
     // builder test cases should be in ParsePushState test
@@ -224,9 +225,9 @@ public class ParsePushTest {
         assertEquals(time, state.pushTime().longValue());
     }
 
-    //endregion
+    // endregion
 
-    //region testSetQuery
+    // region testSetQuery
 
     // We only test a basic case here to make sure logic in ParsePush is correct, more comprehensive
     // builder test cases should be in ParsePushState test
@@ -234,8 +235,7 @@ public class ParsePushTest {
     public void testSetQuery() throws Exception {
         ParsePush push = new ParsePush();
         ParseQuery<ParseInstallation> query = ParseInstallation.getQuery();
-        query.getBuilder()
-                .whereEqualTo("foo", "bar");
+        query.getBuilder().whereEqualTo("foo", "bar");
         push.setQuery(query);
 
         // Right now it is hard for us to test a builder, so we build a state to test the builder is
@@ -248,9 +248,9 @@ public class ParsePushTest {
         assertEquals("bar", queryStateJson.getJSONObject("where").getString("foo"));
     }
 
-    //endregion
+    // endregion
 
-    //region testSubscribeInBackground
+    // region testSubscribeInBackground
 
     @Test
     public void testSubscribeInBackgroundSuccess() throws Exception {
@@ -271,13 +271,15 @@ public class ParsePushTest {
         ParsePush push = new ParsePush();
         final Semaphore done = new Semaphore(0);
         final Capture<Exception> exceptionCapture = new Capture<>();
-        ParsePush.subscribeInBackground("test", new SaveCallback() {
-            @Override
-            public void done(ParseException e) {
-                exceptionCapture.set(e);
-                done.release();
-            }
-        });
+        ParsePush.subscribeInBackground(
+                "test",
+                e -> {
+                    exceptionCapture.set(e);
+                    done.release();
+                });
+
+        shadowMainLooper().idle();
+
         assertNull(exceptionCapture.get());
         assertTrue(done.tryAcquire(1, 10, TimeUnit.SECONDS));
         verify(controller, times(1)).subscribeInBackground("test");
@@ -287,7 +289,8 @@ public class ParsePushTest {
     public void testSubscribeInBackgroundFail() throws Exception {
         ParsePushChannelsController controller = mock(ParsePushChannelsController.class);
         ParseException exception = new ParseException(ParseException.OTHER_CAUSE, "error");
-        when(controller.subscribeInBackground(anyString())).thenReturn(Task.<Void>forError(exception));
+        when(controller.subscribeInBackground(anyString()))
+                .thenReturn(Task.<Void>forError(exception));
         ParseCorePlugins.getInstance().registerPushChannelsController(controller);
 
         Task<Void> pushTask = ParsePush.subscribeInBackground("test");
@@ -301,32 +304,36 @@ public class ParsePushTest {
     public void testSubscribeInBackgroundWithCallbackFail() throws Exception {
         ParsePushChannelsController controller = mock(ParsePushChannelsController.class);
         final ParseException exception = new ParseException(ParseException.OTHER_CAUSE, "error");
-        when(controller.subscribeInBackground(anyString())).thenReturn(Task.<Void>forError(exception));
+        when(controller.subscribeInBackground(anyString()))
+                .thenReturn(Task.<Void>forError(exception));
         ParseCorePlugins.getInstance().registerPushChannelsController(controller);
 
         ParsePush push = new ParsePush();
         final Semaphore done = new Semaphore(0);
         final Capture<Exception> exceptionCapture = new Capture<>();
-        ParsePush.subscribeInBackground("test", new SaveCallback() {
-            @Override
-            public void done(ParseException e) {
-                exceptionCapture.set(e);
-                done.release();
-            }
-        });
+        ParsePush.subscribeInBackground(
+                "test",
+                e -> {
+                    exceptionCapture.set(e);
+                    done.release();
+                });
+
+        shadowMainLooper().idle();
+
         assertSame(exception, exceptionCapture.get());
         assertTrue(done.tryAcquire(1, 10, TimeUnit.SECONDS));
         verify(controller, times(1)).subscribeInBackground("test");
     }
 
-    //endregion
+    // endregion
 
-    //region testUnsubscribeInBackground
+    // region testUnsubscribeInBackground
 
     @Test
     public void testUnsubscribeInBackgroundSuccess() throws Exception {
         ParsePushChannelsController controller = mock(ParsePushChannelsController.class);
-        when(controller.unsubscribeInBackground(anyString())).thenReturn(Task.<Void>forResult(null));
+        when(controller.unsubscribeInBackground(anyString()))
+                .thenReturn(Task.<Void>forResult(null));
         ParseCorePlugins.getInstance().registerPushChannelsController(controller);
 
         ParseTaskUtils.wait(ParsePush.unsubscribeInBackground("test"));
@@ -336,18 +343,21 @@ public class ParsePushTest {
     @Test
     public void testUnsubscribeInBackgroundWithCallbackSuccess() throws Exception {
         final ParsePushChannelsController controller = mock(ParsePushChannelsController.class);
-        when(controller.unsubscribeInBackground(anyString())).thenReturn(Task.<Void>forResult(null));
+        when(controller.unsubscribeInBackground(anyString()))
+                .thenReturn(Task.<Void>forResult(null));
         ParseCorePlugins.getInstance().registerPushChannelsController(controller);
 
         final Semaphore done = new Semaphore(0);
         final Capture<Exception> exceptionCapture = new Capture<>();
-        ParsePush.unsubscribeInBackground("test", new SaveCallback() {
-            @Override
-            public void done(ParseException e) {
-                exceptionCapture.set(e);
-                done.release();
-            }
-        });
+        ParsePush.unsubscribeInBackground(
+                "test",
+                e -> {
+                    exceptionCapture.set(e);
+                    done.release();
+                });
+
+        shadowMainLooper().idle();
+
         assertNull(exceptionCapture.get());
         assertTrue(done.tryAcquire(1, 10, TimeUnit.SECONDS));
         verify(controller, times(1)).unsubscribeInBackground("test");
@@ -379,21 +389,23 @@ public class ParsePushTest {
         ParsePush push = new ParsePush();
         final Semaphore done = new Semaphore(0);
         final Capture<Exception> exceptionCapture = new Capture<>();
-        ParsePush.unsubscribeInBackground("test", new SaveCallback() {
-            @Override
-            public void done(ParseException e) {
-                exceptionCapture.set(e);
-                done.release();
-            }
-        });
+        ParsePush.unsubscribeInBackground(
+                "test",
+                e -> {
+                    exceptionCapture.set(e);
+                    done.release();
+                });
+
+        shadowMainLooper().idle();
+
         assertSame(exception, exceptionCapture.get());
         assertTrue(done.tryAcquire(1, 10, TimeUnit.SECONDS));
         verify(controller, times(1)).unsubscribeInBackground("test");
     }
 
-    //endregion
+    // endregion
 
-    //region testGetPushChannelsController
+    // region testGetPushChannelsController
 
     @Test
     public void testGetPushChannelsController() {
@@ -403,9 +415,9 @@ public class ParsePushTest {
         assertSame(controller, ParsePush.getPushChannelsController());
     }
 
-    //endregion
+    // endregion
 
-    //region testGetPushController
+    // region testGetPushController
 
     @Test
     public void testGetPushController() {
@@ -415,15 +427,15 @@ public class ParsePushTest {
         assertSame(controller, ParsePush.getPushController());
     }
 
-    //endregion
+    // endregion
 
-    //region testSendInBackground
+    // region testSendInBackground
 
     @Test
     public void testSendInBackgroundSuccess() throws Exception {
         // Mock controller
         ParsePushController controller = mock(ParsePushController.class);
-        when(controller.sendInBackground(any(ParsePush.State.class), anyString()))
+        when(controller.sendInBackground(any(ParsePush.State.class), nullable(String.class)))
                 .thenReturn(Task.<Void>forResult(null));
         ParseCorePlugins.getInstance().registerPushController(controller);
 
@@ -434,14 +446,14 @@ public class ParsePushTest {
         List<String> channels = new ArrayList<>();
         channels.add("test");
         channels.add("testAgain");
-        push.builder.expirationTime((long) 1000)
-                .data(data)
-                .channelSet(channels);
+        push.builder.expirationTime((long) 1000).data(data).channelSet(channels);
         ParseTaskUtils.wait(push.sendInBackground());
 
         // Make sure controller is executed and state parameter is correct
-        ArgumentCaptor<ParsePush.State> stateCaptor = ArgumentCaptor.forClass(ParsePush.State.class);
-        verify(controller, times(1)).sendInBackground(stateCaptor.capture(), anyString());
+        ArgumentCaptor<ParsePush.State> stateCaptor =
+                ArgumentCaptor.forClass(ParsePush.State.class);
+        verify(controller, times(1))
+                .sendInBackground(stateCaptor.capture(), nullable(String.class));
         ParsePush.State state = stateCaptor.getValue();
         assertEquals(data, state.data(), JSONCompareMode.NON_EXTENSIBLE);
         assertEquals(2, state.channelSet().size());
@@ -453,7 +465,7 @@ public class ParsePushTest {
     public void testSendInBackgroundWithCallbackSuccess() throws Exception {
         // Mock controller
         ParsePushController controller = mock(ParsePushController.class);
-        when(controller.sendInBackground(any(ParsePush.State.class), anyString()))
+        when(controller.sendInBackground(any(ParsePush.State.class), nullable(String.class)))
                 .thenReturn(Task.<Void>forResult(null));
         ParseCorePlugins.getInstance().registerPushController(controller);
 
@@ -464,24 +476,24 @@ public class ParsePushTest {
         List<String> channels = new ArrayList<>();
         channels.add("test");
         channels.add("testAgain");
-        push.builder.expirationTime((long) 1000)
-                .data(data)
-                .channelSet(channels);
+        push.builder.expirationTime((long) 1000).data(data).channelSet(channels);
         final Semaphore done = new Semaphore(0);
         final Capture<Exception> exceptionCapture = new Capture<>();
-        push.sendInBackground(new SendCallback() {
-            @Override
-            public void done(ParseException e) {
-                exceptionCapture.set(e);
-                done.release();
-            }
-        });
+        push.sendInBackground(
+                e -> {
+                    exceptionCapture.set(e);
+                    done.release();
+                });
+
+        shadowMainLooper().idle();
 
         // Make sure controller is executed and state parameter is correct
         assertNull(exceptionCapture.get());
         assertTrue(done.tryAcquire(1, 10, TimeUnit.SECONDS));
-        ArgumentCaptor<ParsePush.State> stateCaptor = ArgumentCaptor.forClass(ParsePush.State.class);
-        verify(controller, times(1)).sendInBackground(stateCaptor.capture(), anyString());
+        ArgumentCaptor<ParsePush.State> stateCaptor =
+                ArgumentCaptor.forClass(ParsePush.State.class);
+        verify(controller, times(1))
+                .sendInBackground(stateCaptor.capture(), nullable(String.class));
         ParsePush.State state = stateCaptor.getValue();
         assertEquals(data, state.data(), JSONCompareMode.NON_EXTENSIBLE);
         assertEquals(2, state.channelSet().size());
@@ -494,7 +506,7 @@ public class ParsePushTest {
         // Mock controller
         ParsePushController controller = mock(ParsePushController.class);
         ParseException exception = new ParseException(ParseException.OTHER_CAUSE, "error");
-        when(controller.sendInBackground(any(ParsePush.State.class), anyString()))
+        when(controller.sendInBackground(any(ParsePush.State.class), nullable(String.class)))
                 .thenReturn(Task.<Void>forError(exception));
         ParseCorePlugins.getInstance().registerPushController(controller);
 
@@ -505,15 +517,15 @@ public class ParsePushTest {
         List<String> channels = new ArrayList<>();
         channels.add("test");
         channels.add("testAgain");
-        push.builder.expirationTime((long) 1000)
-                .data(data)
-                .channelSet(channels);
+        push.builder.expirationTime((long) 1000).data(data).channelSet(channels);
         Task<Void> pushTask = push.sendInBackground();
         pushTask.waitForCompletion();
 
         // Make sure controller is executed and state parameter is correct
-        ArgumentCaptor<ParsePush.State> stateCaptor = ArgumentCaptor.forClass(ParsePush.State.class);
-        verify(controller, times(1)).sendInBackground(stateCaptor.capture(), anyString());
+        ArgumentCaptor<ParsePush.State> stateCaptor =
+                ArgumentCaptor.forClass(ParsePush.State.class);
+        verify(controller, times(1))
+                .sendInBackground(stateCaptor.capture(), nullable(String.class));
         ParsePush.State state = stateCaptor.getValue();
         assertEquals(data, state.data(), JSONCompareMode.NON_EXTENSIBLE);
         assertEquals(2, state.channelSet().size());
@@ -529,7 +541,7 @@ public class ParsePushTest {
         // Mock controller
         ParsePushController controller = mock(ParsePushController.class);
         final ParseException exception = new ParseException(ParseException.OTHER_CAUSE, "error");
-        when(controller.sendInBackground(any(ParsePush.State.class), anyString()))
+        when(controller.sendInBackground(any(ParsePush.State.class), nullable(String.class)))
                 .thenReturn(Task.<Void>forError(exception));
         ParseCorePlugins.getInstance().registerPushController(controller);
 
@@ -540,24 +552,24 @@ public class ParsePushTest {
         List<String> channels = new ArrayList<>();
         channels.add("test");
         channels.add("testAgain");
-        push.builder.expirationTime((long) 1000)
-                .data(data)
-                .channelSet(channels);
+        push.builder.expirationTime((long) 1000).data(data).channelSet(channels);
         final Semaphore done = new Semaphore(0);
         final Capture<Exception> exceptionCapture = new Capture<>();
-        push.sendInBackground(new SendCallback() {
-            @Override
-            public void done(ParseException e) {
-                exceptionCapture.set(e);
-                done.release();
-            }
-        });
+        push.sendInBackground(
+                e -> {
+                    exceptionCapture.set(e);
+                    done.release();
+                });
+
+        shadowMainLooper().idle();
 
         // Make sure controller is executed and state parameter is correct
         assertSame(exception, exceptionCapture.get());
         assertTrue(done.tryAcquire(1, 10, TimeUnit.SECONDS));
-        ArgumentCaptor<ParsePush.State> stateCaptor = ArgumentCaptor.forClass(ParsePush.State.class);
-        verify(controller, times(1)).sendInBackground(stateCaptor.capture(), anyString());
+        ArgumentCaptor<ParsePush.State> stateCaptor =
+                ArgumentCaptor.forClass(ParsePush.State.class);
+        verify(controller, times(1))
+                .sendInBackground(stateCaptor.capture(), nullable(String.class));
         ParsePush.State state = stateCaptor.getValue();
         assertEquals(data, state.data(), JSONCompareMode.NON_EXTENSIBLE);
         assertEquals(2, state.channelSet().size());
@@ -569,7 +581,7 @@ public class ParsePushTest {
     public void testSendSuccess() throws Exception {
         // Mock controller
         ParsePushController controller = mock(ParsePushController.class);
-        when(controller.sendInBackground(any(ParsePush.State.class), anyString()))
+        when(controller.sendInBackground(any(ParsePush.State.class), nullable(String.class)))
                 .thenReturn(Task.<Void>forResult(null));
         ParseCorePlugins.getInstance().registerPushController(controller);
 
@@ -580,14 +592,14 @@ public class ParsePushTest {
         List<String> channels = new ArrayList<>();
         channels.add("test");
         channels.add("testAgain");
-        push.builder.expirationTime((long) 1000)
-                .data(data)
-                .channelSet(channels);
+        push.builder.expirationTime((long) 1000).data(data).channelSet(channels);
         push.send();
 
         // Make sure controller is executed and state parameter is correct
-        ArgumentCaptor<ParsePush.State> stateCaptor = ArgumentCaptor.forClass(ParsePush.State.class);
-        verify(controller, times(1)).sendInBackground(stateCaptor.capture(), anyString());
+        ArgumentCaptor<ParsePush.State> stateCaptor =
+                ArgumentCaptor.forClass(ParsePush.State.class);
+        verify(controller, times(1))
+                .sendInBackground(stateCaptor.capture(), nullable(String.class));
         ParsePush.State state = stateCaptor.getValue();
         assertEquals(data, state.data(), JSONCompareMode.NON_EXTENSIBLE);
         assertEquals(2, state.channelSet().size());
@@ -600,7 +612,7 @@ public class ParsePushTest {
         // Mock controller
         ParsePushController controller = mock(ParsePushController.class);
         final ParseException exception = new ParseException(ParseException.OTHER_CAUSE, "error");
-        when(controller.sendInBackground(any(ParsePush.State.class), anyString()))
+        when(controller.sendInBackground(any(ParsePush.State.class), nullable(String.class)))
                 .thenReturn(Task.<Void>forError(exception));
         ParseCorePlugins.getInstance().registerPushController(controller);
 
@@ -611,9 +623,7 @@ public class ParsePushTest {
         List<String> channels = new ArrayList<>();
         channels.add("test");
         channels.add("testAgain");
-        push.builder.expirationTime((long) 1000)
-                .data(data)
-                .channelSet(channels);
+        push.builder.expirationTime((long) 1000).data(data).channelSet(channels);
         try {
             push.send();
         } catch (ParseException e) {
@@ -621,35 +631,38 @@ public class ParsePushTest {
         }
 
         // Make sure controller is executed and state parameter is correct
-        ArgumentCaptor<ParsePush.State> stateCaptor = ArgumentCaptor.forClass(ParsePush.State.class);
-        verify(controller, times(1)).sendInBackground(stateCaptor.capture(), anyString());
+        ArgumentCaptor<ParsePush.State> stateCaptor =
+                ArgumentCaptor.forClass(ParsePush.State.class);
+        verify(controller, times(1))
+                .sendInBackground(stateCaptor.capture(), nullable(String.class));
         ParsePush.State state = stateCaptor.getValue();
         assertEquals(data, state.data(), JSONCompareMode.NON_EXTENSIBLE);
         assertEquals(2, state.channelSet().size());
         assertTrue(state.channelSet().contains("test"));
         assertTrue(state.channelSet().contains("testAgain"));
     }
-    //endregion
+    // endregion
 
-    //region testSendMessageInBackground
+    // region testSendMessageInBackground
 
     @Test
     public void testSendMessageInBackground() throws Exception {
         // Mock controller
         ParsePushController controller = mock(ParsePushController.class);
-        when(controller.sendInBackground(any(ParsePush.State.class), anyString()))
+        when(controller.sendInBackground(any(ParsePush.State.class), nullable(String.class)))
                 .thenReturn(Task.<Void>forResult(null));
         ParseCorePlugins.getInstance().registerPushController(controller);
 
         // Make sample ParsePush data and call method
         ParseQuery<ParseInstallation> query = ParseInstallation.getQuery();
-        query.getBuilder()
-                .whereEqualTo("foo", "bar");
+        query.getBuilder().whereEqualTo("foo", "bar");
         ParseTaskUtils.wait(ParsePush.sendMessageInBackground("test", query));
 
         // Make sure controller is executed and state parameter is correct
-        ArgumentCaptor<ParsePush.State> stateCaptor = ArgumentCaptor.forClass(ParsePush.State.class);
-        verify(controller, times(1)).sendInBackground(stateCaptor.capture(), anyString());
+        ArgumentCaptor<ParsePush.State> stateCaptor =
+                ArgumentCaptor.forClass(ParsePush.State.class);
+        verify(controller, times(1))
+                .sendInBackground(stateCaptor.capture(), nullable(String.class));
         ParsePush.State state = stateCaptor.getValue();
         // Verify query state
         ParseQuery.State<ParseInstallation> queryState = state.queryState();
@@ -663,29 +676,32 @@ public class ParsePushTest {
     public void testSendMessageInBackgroundWithCallback() throws Exception {
         // Mock controller
         ParsePushController controller = mock(ParsePushController.class);
-        when(controller.sendInBackground(any(ParsePush.State.class), anyString()))
+        when(controller.sendInBackground(any(ParsePush.State.class), nullable(String.class)))
                 .thenReturn(Task.<Void>forResult(null));
         ParseCorePlugins.getInstance().registerPushController(controller);
 
         // Make sample ParsePush data and call method
         ParseQuery<ParseInstallation> query = ParseInstallation.getQuery();
-        query.getBuilder()
-                .whereEqualTo("foo", "bar");
+        query.getBuilder().whereEqualTo("foo", "bar");
         final Semaphore done = new Semaphore(0);
         final Capture<Exception> exceptionCapture = new Capture<>();
-        ParsePush.sendMessageInBackground("test", query, new SendCallback() {
-            @Override
-            public void done(ParseException e) {
-                exceptionCapture.set(e);
-                done.release();
-            }
-        });
+        ParsePush.sendMessageInBackground(
+                "test",
+                query,
+                e -> {
+                    exceptionCapture.set(e);
+                    done.release();
+                });
+
+        shadowMainLooper().idle();
 
         // Make sure controller is executed and state parameter is correct
         assertNull(exceptionCapture.get());
         assertTrue(done.tryAcquire(1, 10, TimeUnit.SECONDS));
-        ArgumentCaptor<ParsePush.State> stateCaptor = ArgumentCaptor.forClass(ParsePush.State.class);
-        verify(controller, times(1)).sendInBackground(stateCaptor.capture(), anyString());
+        ArgumentCaptor<ParsePush.State> stateCaptor =
+                ArgumentCaptor.forClass(ParsePush.State.class);
+        verify(controller, times(1))
+                .sendInBackground(stateCaptor.capture(), nullable(String.class));
         ParsePush.State state = stateCaptor.getValue();
         // Verify query state
         ParseQuery.State<ParseInstallation> queryState = state.queryState();
@@ -695,15 +711,15 @@ public class ParsePushTest {
         assertEquals("test", state.data().getString(ParsePush.KEY_DATA_MESSAGE));
     }
 
-    //endregion
+    // endregion
 
-    //region testSendDataInBackground
+    // region testSendDataInBackground
 
     @Test
     public void testSendDataInBackground() throws Exception {
         // Mock controller
         ParsePushController controller = mock(ParsePushController.class);
-        when(controller.sendInBackground(any(ParsePush.State.class), anyString()))
+        when(controller.sendInBackground(any(ParsePush.State.class), nullable(String.class)))
                 .thenReturn(Task.<Void>forResult(null));
         ParseCorePlugins.getInstance().registerPushController(controller);
 
@@ -712,13 +728,14 @@ public class ParsePushTest {
         data.put("key", "value");
         data.put("keyAgain", "valueAgain");
         ParseQuery<ParseInstallation> query = ParseInstallation.getQuery();
-        query.getBuilder()
-                .whereEqualTo("foo", "bar");
+        query.getBuilder().whereEqualTo("foo", "bar");
         ParsePush.sendDataInBackground(data, query);
 
         // Make sure controller is executed and state parameter is correct
-        ArgumentCaptor<ParsePush.State> stateCaptor = ArgumentCaptor.forClass(ParsePush.State.class);
-        verify(controller, times(1)).sendInBackground(stateCaptor.capture(), anyString());
+        ArgumentCaptor<ParsePush.State> stateCaptor =
+                ArgumentCaptor.forClass(ParsePush.State.class);
+        verify(controller, times(1))
+                .sendInBackground(stateCaptor.capture(), nullable(String.class));
         ParsePush.State state = stateCaptor.getValue();
         // Verify query state
         ParseQuery.State<ParseInstallation> queryState = state.queryState();
@@ -732,7 +749,7 @@ public class ParsePushTest {
     public void testSendDataInBackgroundWithCallback() throws Exception {
         // Mock controller
         ParsePushController controller = mock(ParsePushController.class);
-        when(controller.sendInBackground(any(ParsePush.State.class), anyString()))
+        when(controller.sendInBackground(any(ParsePush.State.class), nullable(String.class)))
                 .thenReturn(Task.<Void>forResult(null));
         ParseCorePlugins.getInstance().registerPushController(controller);
 
@@ -741,23 +758,26 @@ public class ParsePushTest {
         data.put("key", "value");
         data.put("keyAgain", "valueAgain");
         ParseQuery<ParseInstallation> query = ParseInstallation.getQuery();
-        query.getBuilder()
-                .whereEqualTo("foo", "bar");
+        query.getBuilder().whereEqualTo("foo", "bar");
         final Semaphore done = new Semaphore(0);
         final Capture<Exception> exceptionCapture = new Capture<>();
-        ParsePush.sendDataInBackground(data, query, new SendCallback() {
-            @Override
-            public void done(ParseException e) {
-                exceptionCapture.set(e);
-                done.release();
-            }
-        });
+        ParsePush.sendDataInBackground(
+                data,
+                query,
+                e -> {
+                    exceptionCapture.set(e);
+                    done.release();
+                });
+
+        shadowMainLooper().idle();
 
         // Make sure controller is executed and state parameter is correct
         assertNull(exceptionCapture.get());
         assertTrue(done.tryAcquire(1, 10, TimeUnit.SECONDS));
-        ArgumentCaptor<ParsePush.State> stateCaptor = ArgumentCaptor.forClass(ParsePush.State.class);
-        verify(controller, times(1)).sendInBackground(stateCaptor.capture(), anyString());
+        ArgumentCaptor<ParsePush.State> stateCaptor =
+                ArgumentCaptor.forClass(ParsePush.State.class);
+        verify(controller, times(1))
+                .sendInBackground(stateCaptor.capture(), nullable(String.class));
         ParsePush.State state = stateCaptor.getValue();
         // Verify query state
         ParseQuery.State<ParseInstallation> queryState = state.queryState();
@@ -767,7 +787,7 @@ public class ParsePushTest {
         assertEquals(data, state.data(), JSONCompareMode.NON_EXTENSIBLE);
     }
 
-    //endregion
+    // endregion
 
     // TODO(mengyan): Add testSetEnable after we test PushRouter and PushService
 }

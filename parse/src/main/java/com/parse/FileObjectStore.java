@@ -8,14 +8,11 @@
  */
 package com.parse;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
+import com.parse.boltsinternal.Task;
 import java.io.File;
 import java.io.IOException;
-import java.util.concurrent.Callable;
-
-import bolts.Task;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 class FileObjectStore<T extends ParseObject> implements ParseObjectStore<T> {
 
@@ -26,6 +23,7 @@ class FileObjectStore<T extends ParseObject> implements ParseObjectStore<T> {
     public FileObjectStore(Class<T> clazz, File file, ParseObjectCurrentCoder coder) {
         this(getSubclassingController().getClassName(clazz), file, coder);
     }
+
     public FileObjectStore(String className, File file, ParseObjectCurrentCoder coder) {
         this.className = className;
         this.file = file;
@@ -39,29 +37,29 @@ class FileObjectStore<T extends ParseObject> implements ParseObjectStore<T> {
     /**
      * Saves the {@code ParseObject} to the a file on disk as JSON in /2/ format.
      *
-     * @param coder   Current coder to encode the ParseObject.
+     * @param coder Current coder to encode the ParseObject.
      * @param current ParseObject which needs to be saved to disk.
-     * @param file    The file to save the object to.
+     * @param file The file to save the object to.
      * @see #getFromDisk(ParseObjectCurrentCoder, File, ParseObject.State.Init)
      */
-    private static void saveToDisk(
-            ParseObjectCurrentCoder coder, ParseObject current, File file) {
+    private static void saveToDisk(ParseObjectCurrentCoder coder, ParseObject current, File file) {
         JSONObject json = coder.encode(current.getState(), null, PointerEncoder.get());
         try {
             ParseFileUtils.writeJSONObjectToFile(file, json);
         } catch (IOException e) {
-            //TODO(grantland): We should do something if this fails...
+            // TODO(grantland): We should do something if this fails...
         }
     }
 
     /**
      * Retrieves a {@code ParseObject} from a file on disk in /2/ format.
      *
-     * @param coder   Current coder to decode the ParseObject.
-     * @param file    The file to retrieve the object from.
-     * @param builder An empty builder which is used to generate a empty state and rebuild a ParseObject.
+     * @param coder Current coder to decode the ParseObject.
+     * @param file The file to retrieve the object from.
+     * @param builder An empty builder which is used to generate a empty state and rebuild a
+     *     ParseObject.
      * @return The {@code ParseObject} that was retrieved. If the file wasn't found, or the contents
-     * of the file is an invalid {@code ParseObject}, returns {@code null}.
+     *     of the file is an invalid {@code ParseObject}, returns {@code null}.
      * @see #saveToDisk(ParseObjectCurrentCoder, ParseObject, File)
      */
     private static <T extends ParseObject> T getFromDisk(
@@ -73,58 +71,50 @@ class FileObjectStore<T extends ParseObject> implements ParseObjectStore<T> {
             return null;
         }
 
-        ParseObject.State newState = coder.decode(builder, json, ParseDecoder.get())
-                .isComplete(true)
-                .build();
+        ParseObject.State newState =
+                coder.decode(builder, json, ParseDecoder.get()).isComplete(true).build();
         return ParseObject.from(newState);
     }
 
     @Override
     public Task<Void> setAsync(final T object) {
-        return Task.call(new Callable<Void>() {
-            @Override
-            public Void call() {
-                saveToDisk(coder, object, file);
-                //TODO (grantland): check to see if this failed? We currently don't for legacy reasons.
-                return null;
-            }
-        }, ParseExecutors.io());
+        return Task.call(
+                () -> {
+                    saveToDisk(coder, object, file);
+                    // TODO (grantland): check to see if this failed? We currently don't for legacy
+                    // reasons.
+                    return null;
+                },
+                ParseExecutors.io());
     }
 
     @Override
     public Task<T> getAsync() {
-        return Task.call(new Callable<T>() {
-            @Override
-            public T call() {
-                if (!file.exists()) {
-                    return null;
-                }
-                return getFromDisk(coder, file, ParseObject.State.newBuilder(className));
-            }
-        }, ParseExecutors.io());
+        return Task.call(
+                () -> {
+                    if (!file.exists()) {
+                        return null;
+                    }
+                    return getFromDisk(coder, file, ParseObject.State.newBuilder(className));
+                },
+                ParseExecutors.io());
     }
 
     @Override
     public Task<Boolean> existsAsync() {
-        return Task.call(new Callable<Boolean>() {
-            @Override
-            public Boolean call() {
-                return file.exists();
-            }
-        }, ParseExecutors.io());
+        return Task.call(file::exists, ParseExecutors.io());
     }
 
     @Override
     public Task<Void> deleteAsync() {
-        return Task.call(new Callable<Void>() {
-            @Override
-            public Void call() {
-                if (file.exists() && !ParseFileUtils.deleteQuietly(file)) {
-                    throw new RuntimeException("Unable to delete");
-                }
+        return Task.call(
+                () -> {
+                    if (file.exists() && !ParseFileUtils.deleteQuietly(file)) {
+                        throw new RuntimeException("Unable to delete");
+                    }
 
-                return null;
-            }
-        }, ParseExecutors.io());
+                    return null;
+                },
+                ParseExecutors.io());
     }
 }

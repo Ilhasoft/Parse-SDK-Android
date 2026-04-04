@@ -1,7 +1,13 @@
 package com.parse;
 
-import android.database.sqlite.SQLiteException;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import android.database.sqlite.SQLiteException;
+import com.parse.boltsinternal.Task;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -9,21 +15,11 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-
-import bolts.Task;
-
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
 public class EventuallyPinTest {
 
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
+    @Rule public final ExpectedException thrown = ExpectedException.none();
 
     @Before
     public void setUp() {
@@ -43,9 +39,10 @@ public class EventuallyPinTest {
     public void testFailingFindAllPinned() throws Exception {
         OfflineStore offlineStore = mock(OfflineStore.class);
         Parse.setLocalDatastore(offlineStore);
-        when(offlineStore.findFromPinAsync(eq(EventuallyPin.PIN_NAME),
-                any(ParseQuery.State.class),
-                any(ParseUser.class)))
+        when(offlineStore.findFromPinAsync(
+                        eq(EventuallyPin.PIN_NAME),
+                        any(ParseQuery.State.class),
+                        nullable(ParseUser.class)))
                 .thenReturn(Task.forError(new SQLiteException()));
 
         ParsePlugins plugins = mock(ParsePlugins.class);

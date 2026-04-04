@@ -8,17 +8,14 @@
  */
 package com.parse;
 
-import android.support.annotation.Nullable;
-
+import androidx.annotation.Nullable;
 import com.parse.http.ParseHttpBody;
 import com.parse.http.ParseHttpRequest;
 import com.parse.http.ParseHttpResponse;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
-
 import okhttp3.Call;
 import okhttp3.Headers;
 import okhttp3.MediaType;
@@ -29,12 +26,10 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import okio.BufferedSink;
 
-/**
- * Internal http client which wraps an {@link OkHttpClient}
- */
+/** Internal http client which wraps an {@link OkHttpClient} */
 class ParseHttpClient {
 
-    private OkHttpClient okHttpClient;
+    private final OkHttpClient okHttpClient;
     private boolean hasExecuted;
 
     ParseHttpClient(@Nullable OkHttpClient.Builder builder) {
@@ -120,7 +115,8 @@ class ParseHttpClient {
             case DELETE:
             case POST:
             case PUT:
-                // Since we need to set body and method at the same time for DELETE, POST, PUT, we will do it in
+                // Since we need to set body and method at the same time for DELETE, POST, PUT, we
+                // will do it in
                 // the following.
                 break;
             default:
@@ -161,7 +157,7 @@ class ParseHttpClient {
 
     private static class ParseOkHttpRequestBody extends RequestBody {
 
-        private ParseHttpBody parseBody;
+        private final ParseHttpBody parseBody;
 
         ParseOkHttpRequestBody(ParseHttpBody parseBody) {
             this.parseBody = parseBody;

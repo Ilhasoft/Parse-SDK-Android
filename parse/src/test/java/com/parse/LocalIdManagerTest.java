@@ -8,25 +8,22 @@
  */
 package com.parse;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+
 import org.json.JSONObject;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
 public class LocalIdManagerTest {
 
-    @Rule
-    public TemporaryFolder temporaryFolder = new TemporaryFolder();
+    @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
     @Test
     public void testLocalIdManager() throws Exception {
@@ -35,19 +32,19 @@ public class LocalIdManagerTest {
 
         String localId1 = manager.createLocalId();
         assertNotNull(localId1);
-        manager.retainLocalIdOnDisk(localId1);  // refcount = 1
+        manager.retainLocalIdOnDisk(localId1); // refcount = 1
         assertNull(manager.getObjectId(localId1));
 
         String localId2 = manager.createLocalId();
         assertNotNull(localId2);
-        manager.retainLocalIdOnDisk(localId2);  // refcount = 1
+        manager.retainLocalIdOnDisk(localId2); // refcount = 1
         assertNull(manager.getObjectId(localId2));
 
-        manager.retainLocalIdOnDisk(localId1);  // refcount = 2
+        manager.retainLocalIdOnDisk(localId1); // refcount = 2
         assertNull(manager.getObjectId(localId1));
         assertNull(manager.getObjectId(localId2));
 
-        manager.releaseLocalIdOnDisk(localId1);  // refcount = 1
+        manager.releaseLocalIdOnDisk(localId1); // refcount = 1
         assertNull(manager.getObjectId(localId1));
         assertNull(manager.getObjectId(localId2));
 
@@ -56,7 +53,7 @@ public class LocalIdManagerTest {
         assertEquals(objectId1, manager.getObjectId(localId1));
         assertNull(manager.getObjectId(localId2));
 
-        manager.retainLocalIdOnDisk(localId1);  // refcount = 2
+        manager.retainLocalIdOnDisk(localId1); // refcount = 2
         assertEquals(objectId1, manager.getObjectId(localId1));
         assertNull(manager.getObjectId(localId2));
 
@@ -65,15 +62,15 @@ public class LocalIdManagerTest {
         assertEquals(objectId1, manager.getObjectId(localId1));
         assertEquals(objectId2, manager.getObjectId(localId2));
 
-        manager.releaseLocalIdOnDisk(localId1);  // refcount = 1
+        manager.releaseLocalIdOnDisk(localId1); // refcount = 1
         assertEquals(objectId1, manager.getObjectId(localId1));
         assertEquals(objectId2, manager.getObjectId(localId2));
 
-        manager.releaseLocalIdOnDisk(localId1);  // refcount = 0
+        manager.releaseLocalIdOnDisk(localId1); // refcount = 0
         assertNull(manager.getObjectId(localId1));
         assertEquals(objectId2, manager.getObjectId(localId2));
 
-        manager.releaseLocalIdOnDisk(localId2);  // refcount = 0
+        manager.releaseLocalIdOnDisk(localId2); // refcount = 0
         assertNull(manager.getObjectId(localId1));
         assertNull(manager.getObjectId(localId2));
 

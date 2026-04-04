@@ -8,29 +8,23 @@
  */
 package com.parse;
 
+import com.parse.boltsinternal.Task;
 import java.util.Map;
-
-import bolts.Task;
 
 interface ParseUserController {
 
     Task<ParseUser.State> signUpAsync(
-            ParseObject.State state,
-            ParseOperationSet operations,
-            String sessionToken);
+            ParseObject.State state, ParseOperationSet operations, String sessionToken);
 
-    //region logInAsync
+    // region logInAsync
 
-    Task<ParseUser.State> logInAsync(
-            String username, String password);
+    Task<ParseUser.State> logInAsync(String username, String password);
 
-    Task<ParseUser.State> logInAsync(
-            ParseUser.State state, ParseOperationSet operations);
+    Task<ParseUser.State> logInAsync(ParseUser.State state, ParseOperationSet operations);
 
-    Task<ParseUser.State> logInAsync(
-            String authType, Map<String, String> authData);
+    Task<ParseUser.State> logInAsync(String authType, Map<String, String> authData);
 
-    //endregion
+    // endregion
 
     Task<ParseUser.State> getUserAsync(String sessionToken);
 

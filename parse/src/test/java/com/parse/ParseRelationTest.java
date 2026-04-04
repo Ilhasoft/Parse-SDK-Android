@@ -8,18 +8,6 @@
  */
 package com.parse;
 
-import android.os.Parcel;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
-import org.junit.runner.RunWith;
-import org.robolectric.RobolectricTestRunner;
-import org.robolectric.annotation.Config;
-import org.skyscreamer.jsonassert.JSONCompareMode;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -29,14 +17,22 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.skyscreamer.jsonassert.JSONAssert.assertEquals;
 
+import android.os.Parcel;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
+import org.robolectric.RobolectricTestRunner;
+import org.skyscreamer.jsonassert.JSONCompareMode;
+
 @RunWith(RobolectricTestRunner.class)
-@Config(constants = BuildConfig.class, sdk = TestHelper.ROBOLECTRIC_SDK_VERSION)
 public class ParseRelationTest {
 
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
+    @Rule public final ExpectedException thrown = ExpectedException.none();
 
-    //region testConstructor
+    // region testConstructor
 
     @Test
     public void testConstructorWithParentAndKey() {
@@ -82,9 +78,9 @@ public class ParseRelationTest {
         assertEquals("objectId", ((ParseObject) objects[0]).getObjectId());
     }
 
-    //endregion
+    // endregion
 
-    //region testParcelable
+    // region testParcelable
 
     @Test
     public void testParcelable() {
@@ -112,9 +108,9 @@ public class ParseRelationTest {
         // That is because ParseRelation uses == to check for known objects.
     }
 
-    //endregion
+    // endregion
 
-    //region testEnsureParentAndKey
+    // region testEnsureParentAndKey
 
     @Test
     public void testEnsureParentAndKey() {
@@ -150,9 +146,9 @@ public class ParseRelationTest {
         relation.ensureParentAndKey(parent, "keyAgain");
     }
 
-    //endregion
+    // endregion
 
-    //region testAdd
+    // region testAdd
 
     @Test
     public void testAdd() {
@@ -170,12 +166,11 @@ public class ParseRelationTest {
         ParseRelation relationInParent = parent.getRelation("key");
         assertEquals("Test", relationInParent.getTargetClass());
         assertTrue(relationInParent.hasKnownObject(object));
-
     }
 
-    //endregion
+    // endregion
 
-    //region testRemove
+    // region testRemove
 
     @Test
     public void testRemove() {
@@ -197,9 +192,9 @@ public class ParseRelationTest {
         assertFalse(relation.hasKnownObject(object));
     }
 
-    //endregion
+    // endregion
 
-    //region testGetQuery
+    // region testGetQuery
 
     @Test
     public void testGetQueryWithNoTargetClass() {
@@ -238,9 +233,9 @@ public class ParseRelationTest {
         assertSame(parent, relationConstraint.getObject());
     }
 
-    //endregion
+    // endregion
 
-    //region testToJSON
+    // region testToJSON
 
     @Test
     public void testEncodeToJSON() throws Exception {
@@ -263,5 +258,5 @@ public class ParseRelationTest {
                 JSONCompareMode.NON_EXTENSIBLE);
     }
 
-    //endregion
+    // endregion
 }

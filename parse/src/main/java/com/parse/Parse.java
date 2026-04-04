@@ -11,9 +11,11 @@ package com.parse;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
-import android.support.annotation.NonNull;
 import android.util.Log;
-
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import com.parse.boltsinternal.Continuation;
+import com.parse.boltsinternal.Task;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -24,9 +26,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
-
-import bolts.Continuation;
-import bolts.Task;
 import okhttp3.OkHttpClient;
 
 /**
@@ -41,17 +40,18 @@ public class Parse {
     public static final int LOG_LEVEL_WARNING = Log.WARN;
     public static final int LOG_LEVEL_ERROR = Log.ERROR;
 
-    //region LDS
+    // region LDS
     public static final int LOG_LEVEL_NONE = Integer.MAX_VALUE;
     private static final String TAG = "com.parse.Parse";
     private static final int DEFAULT_MAX_RETRIES = ParseRequest.DEFAULT_MAX_RETRIES;
     private static final Object MUTEX = new Object();
-    //region ParseCallbacks
+    // region ParseCallbacks
     private static final Object MUTEX_CALLBACKS = new Object();
     static ParseEventuallyQueue eventuallyQueue = null;
     private static boolean isLocalDatastoreEnabled;
+    private static boolean allowCustomObjectId = false;
 
-    //endregion
+    // endregion
     private static OfflineStore offlineStore;
     private static Set<ParseCallbacks> callbacks = new HashSet<>();
 
@@ -62,9 +62,11 @@ public class Parse {
 
     /**
      * Enable pinning in your application. This must be called before your application can use
-     * pinning. You must invoke {@code enableLocalDatastore(Context)} before
-     * {@link #initialize(Configuration)}:
-     * <p/>
+     * pinning. You must invoke {@code enableLocalDatastore(Context)} before {@link
+     * #initialize(Configuration)}:
+     *
+     * <p>
+     *
      * <pre>
      * public class MyApplication extends Application {
      *   public void onCreate() {
@@ -74,12 +76,17 @@ public class Parse {
      * }
      * </pre>
      *
+     * <p>See <a
+     * href="https://github.com/parse-community/Parse-SDK-Android/issues/279">https://github.com/parse-community/Parse-SDK-Android/issues/279</a>
+     * for a discussion on performance of local datastore, and if it is right for your project.
+     *
      * @param context The active {@link Context} for your application.
      */
     public static void enableLocalDatastore(Context context) {
         if (isInitialized()) {
-            throw new IllegalStateException("`Parse#enableLocalDatastore(Context)` must be invoked " +
-                    "before `Parse#initialize(Context)`");
+            throw new IllegalStateException(
+                    "`Parse#enableLocalDatastore(Context)` must be invoked "
+                            + "before `Parse#initialize(Context)`");
         }
         isLocalDatastoreEnabled = true;
     }
@@ -105,11 +112,20 @@ public class Parse {
     }
 
     /**
-     * Authenticates this client as belonging to your application.
-     * This must be called before your
-     * application can use the Parse library. The recommended way is to put a call to
-     * {@code Parse.initialize} in your {@code Application}'s {@code onCreate} method:
-     * <p/>
+     * @return {@code True} if {@link Configuration.Builder#allowCustomObjectId()} has been called,
+     *     otherwise {@code false}.
+     */
+    public static boolean isAllowCustomObjectId() {
+        return allowCustomObjectId;
+    }
+
+    /**
+     * Authenticates this client as belonging to your application. This must be called before your
+     * application can use the Parse library. The recommended way is to put a call to {@code
+     * Parse.initialize} in your {@code Application}'s {@code onCreate} method:
+     *
+     * <p>
+     *
      * <pre>
      * public class MyApplication extends Application {
      *   public void onCreate() {
@@ -129,9 +145,14 @@ public class Parse {
             PLog.w(TAG, "Parse is already initialized");
             return;
         }
+        // Perform old dir migration on initialize.
+        new ParseCacheDirMigrationUtils(configuration.context).runMigrations();
+
         // NOTE (richardross): We will need this here, as ParsePlugins uses the return value of
         // isLocalDataStoreEnabled() to perform additional behavior.
         isLocalDatastoreEnabled = configuration.localDataStoreEnabled;
+
+        allowCustomObjectId = configuration.allowCustomObjectId;
 
         if (parsePlugins == null) {
             ParsePlugins.initialize(configuration.context, configuration);
@@ -150,6 +171,8 @@ public class Parse {
         if (configuration.localDataStoreEnabled) {
             offlineStore = new OfflineStore(configuration.context);
         } else {
+            ParseKeyValueCache.maxKeyValueCacheBytes = configuration.maxKeyValueCacheBytes;
+            ParseKeyValueCache.maxKeyValueCacheFiles = configuration.maxKeyValueCacheFiles;
             ParseKeyValueCache.initialize(configuration.context);
         }
 
@@ -157,31 +180,33 @@ public class Parse {
         // application.
         checkCacheApplicationId();
         final Context context = configuration.context;
-        Task.callInBackground(new Callable<Void>() {
-            @Override
-            public Void call() {
-                getEventuallyQueue(context);
-                return null;
-            }
-        });
+        Task.callInBackground(
+                (Callable<Void>)
+                        () -> {
+                            getEventuallyQueue(context);
+                            return null;
+                        });
 
         ParseFieldOperations.registerDefaultDecoders();
 
         if (!allParsePushIntentReceiversInternal()) {
-            throw new SecurityException("To prevent external tampering to your app's notifications, " +
-                    "all receivers registered to handle the following actions must have " +
-                    "their exported attributes set to false: com.parse.push.intent.RECEIVE, " +
-                    "com.parse.push.intent.OPEN, com.parse.push.intent.DELETE");
+            throw new SecurityException(
+                    "To prevent external tampering to your app's notifications, "
+                            + "all receivers registered to handle the following actions must have "
+                            + "their exported attributes set to false: com.parse.push.intent.RECEIVE, "
+                            + "com.parse.push.intent.OPEN, com.parse.push.intent.DELETE");
         }
 
-        ParseUser.getCurrentUserAsync().makeVoid().continueWith(new Continuation<Void, Void>() {
-            @Override
-            public Void then(Task<Void> task) {
-                // Prime config in the background
-                ParseConfig.getCurrentConfig();
-                return null;
-            }
-        }, Task.BACKGROUND_EXECUTOR);
+        ParseUser.getCurrentUserAsync()
+                .makeVoid()
+                .continueWith(
+                        (Continuation<Void, Void>)
+                                task -> {
+                                    // Prime config in the background
+                                    ParseConfig.getCurrentConfig();
+                                    return null;
+                                },
+                        Task.BACKGROUND_EXECUTOR);
 
         dispatchOnParseInitialized();
 
@@ -191,7 +216,62 @@ public class Parse {
         }
     }
 
-    static void destroy() {
+    // region Server URL
+
+    /** Returns the current server URL. */
+    public static @Nullable String getServer() {
+        URL server = ParseRESTCommand.server;
+        return server == null ? null : server.toString();
+    }
+
+    /**
+     * Sets the server URL. The local client cache is not cleared.
+     *
+     * <p>This can be used to update the server URL after this client has been initialized, without
+     * having to {@link Parse#destroy()} this client. An example use case is server connection
+     * failover, where the clients connects to another URL if the server becomes unreachable at the
+     * current URL.
+     *
+     * <p><b>Warning:</b><br>
+     * The new server URL must point to a Parse Server that connects to the same database.
+     * Otherwise, issues may arise related to locally cached data or delayed methods such as {@link
+     * ParseObject#saveEventually()}.
+     *
+     * @param server The server URL to set.
+     */
+    public static void setServer(@NonNull String server) {
+        try {
+            ParseRESTCommand.server = new URL(validateServerUrl(server));
+        } catch (MalformedURLException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * Validates the server URL.
+     *
+     * @param server The server URL to validate.
+     * @return The validated server URL.
+     */
+    private static @Nullable String validateServerUrl(@Nullable String server) {
+
+        // Add an extra trailing slash so that Parse REST commands include
+        // the path as part of the server URL (i.e. http://api.myhost.com/parse)
+        if (server != null && !server.endsWith("/")) {
+            server = server + "/";
+        }
+
+        return server;
+    }
+
+    // endregion
+
+    /**
+     * Destroys this client and erases its local data store. Calling this after {@link
+     * Parse#initialize} allows you to re-initialize this client with a new configuration. Calling
+     * this while server requests are in progress can cause undefined behavior.
+     */
+    public static void destroy() {
         ParseObject.unregisterParseSubclasses();
 
         ParseEventuallyQueue queue;
@@ -207,11 +287,10 @@ public class Parse {
         ParsePlugins.reset();
 
         setLocalDatastore(null);
+        allowCustomObjectId = false;
     }
 
-    /**
-     * @return {@code True} if {@link #initialize} has been called, otherwise {@code false}.
-     */
+    /** @return {@code True} if {@link #initialize} has been called, otherwise {@code false}. */
     static boolean isInitialized() {
         return ParsePlugins.get() != null;
     }
@@ -225,17 +304,19 @@ public class Parse {
      * Checks that each of the receivers associated with the three actions defined in
      * ParsePushBroadcastReceiver (ACTION_PUSH_RECEIVE, ACTION_PUSH_OPEN, ACTION_PUSH_DELETE) has
      * their exported attributes set to false. If this is the case for each of the receivers
-     * registered in the AndroidManifest.xml or if no receivers are registered (because we will be registering
-     * the default implementation of ParsePushBroadcastReceiver in PushService) then true is returned.
-     * Note: the reason for iterating through lists, is because you can define different receivers
-     * in the manifest that respond to the same intents and both all of the receivers will be triggered.
-     * So we want to make sure all them have the exported attribute set to false.
+     * registered in the AndroidManifest.xml or if no receivers are registered (because we will be
+     * registering the default implementation of ParsePushBroadcastReceiver in PushService) then
+     * true is returned. Note: the reason for iterating through lists, is because you can define
+     * different receivers in the manifest that respond to the same intents and both all of the
+     * receivers will be triggered. So we want to make sure all them have the exported attribute set
+     * to false.
      */
     private static boolean allParsePushIntentReceiversInternal() {
-        List<ResolveInfo> intentReceivers = ManifestInfo.getIntentReceivers(
-                ParsePushBroadcastReceiver.ACTION_PUSH_RECEIVE,
-                ParsePushBroadcastReceiver.ACTION_PUSH_DELETE,
-                ParsePushBroadcastReceiver.ACTION_PUSH_OPEN);
+        List<ResolveInfo> intentReceivers =
+                ManifestInfo.getIntentReceivers(
+                        ParsePushBroadcastReceiver.ACTION_PUSH_RECEIVE,
+                        ParsePushBroadcastReceiver.ACTION_PUSH_DELETE,
+                        ParsePushBroadcastReceiver.ACTION_PUSH_OPEN);
 
         for (ResolveInfo resolveInfo : intentReceivers) {
             if (resolveInfo.activityInfo.exported) {
@@ -243,15 +324,6 @@ public class Parse {
             }
         }
         return true;
-    }
-
-    /**
-     * @deprecated Please use {@link #getParseCacheDir(String)} or {@link #getParseFilesDir(String)}
-     * instead.
-     */
-    @Deprecated
-    static File getParseDir() {
-        return ParsePlugins.get().getParseDir();
     }
 
     static File getParseCacheDir() {
@@ -348,14 +420,17 @@ public class Parse {
             boolean isLocalDatastoreEnabled = Parse.isLocalDatastoreEnabled();
             if (eventuallyQueue == null
                     || (isLocalDatastoreEnabled && eventuallyQueue instanceof ParseCommandCache)
-                    || (!isLocalDatastoreEnabled && eventuallyQueue instanceof ParsePinningEventuallyQueue)) {
+                    || (!isLocalDatastoreEnabled
+                            && eventuallyQueue instanceof ParsePinningEventuallyQueue)) {
                 checkContext();
                 ParseHttpClient httpClient = ParsePlugins.get().restClient();
-                eventuallyQueue = isLocalDatastoreEnabled
-                        ? new ParsePinningEventuallyQueue(context, httpClient)
-                        : new ParseCommandCache(context, httpClient);
+                eventuallyQueue =
+                        isLocalDatastoreEnabled
+                                ? new ParsePinningEventuallyQueue(context, httpClient)
+                                : new ParseCommandCache(context, httpClient);
 
-                // We still need to clear out the old command cache even if we're using Pinning in case
+                // We still need to clear out the old command cache even if we're using Pinning in
+                // case
                 // anything is left over when the user upgraded. Checking number of pending and then
                 // initializing should be enough.
                 if (isLocalDatastoreEnabled && ParseCommandCache.getPendingCount() > 0) {
@@ -366,51 +441,53 @@ public class Parse {
         }
     }
 
-    /**
-     * Used by Parse LiveQuery
-     */
+    /** Used by Parse LiveQuery */
     public static void checkInit() {
         if (ParsePlugins.get() == null) {
-            throw new RuntimeException("You must call Parse.initialize(Context)"
-                    + " before using the Parse library.");
+            throw new RuntimeException(
+                    "You must call Parse.initialize(Context)" + " before using the Parse library.");
         }
 
         if (ParsePlugins.get().applicationId() == null) {
-            throw new RuntimeException("applicationId is null. "
-                    + "You must call Parse.initialize(Context)"
-                    + " before using the Parse library.");
+            throw new RuntimeException(
+                    "applicationId is null. "
+                            + "You must call Parse.initialize(Context)"
+                            + " before using the Parse library.");
         }
     }
 
     static void checkContext() {
         if (ParsePlugins.get().applicationContext() == null) {
-            throw new RuntimeException("applicationContext is null. "
-                    + "You must call Parse.initialize(Context)"
-                    + " before using the Parse library.");
+            throw new RuntimeException(
+                    "applicationContext is null. "
+                            + "You must call Parse.initialize(Context)"
+                            + " before using the Parse library.");
         }
     }
 
     static boolean hasPermission(String permission) {
-        return (getApplicationContext().checkCallingOrSelfPermission(permission) ==
-                PackageManager.PERMISSION_GRANTED);
+        return (getApplicationContext().checkCallingOrSelfPermission(permission)
+                == PackageManager.PERMISSION_GRANTED);
     }
 
-    //endregion
+    // endregion
 
-    //region Logging
+    // region Logging
 
     static void requirePermission(String permission) {
         if (!hasPermission(permission)) {
             throw new IllegalStateException(
                     "To use this functionality, add this to your AndroidManifest.xml:\n"
-                            + "<uses-permission android:name=\"" + permission + "\" />");
+                            + "<uses-permission android:name=\""
+                            + permission
+                            + "\" />");
         }
     }
 
     /**
      * Registers a listener to be called at the completion of {@link #initialize}.
-     * <p>
-     * Throws {@link java.lang.IllegalStateException} if called after {@link #initialize}.
+     *
+     * <p>Throws {@link java.lang.IllegalStateException} if called after {@link #initialize}.
      *
      * @param listener the listener to register
      */
@@ -465,25 +542,24 @@ public class Parse {
         return callbacks;
     }
 
-    /**
-     * Returns the level of logging that will be displayed.
-     */
+    /** Returns the level of logging that will be displayed. */
     public static int getLogLevel() {
         return PLog.getLogLevel();
     }
 
     /**
-     * Sets the level of logging to display, where each level includes all those below it. The default
-     * level is {@link #LOG_LEVEL_NONE}. Please ensure this is set to {@link #LOG_LEVEL_ERROR}
-     * or {@link #LOG_LEVEL_NONE} before deploying your app to ensure no sensitive information is
-     * logged. The levels are:
+     * Sets the level of logging to display, where each level includes all those below it. The
+     * default level is {@link #LOG_LEVEL_NONE}. Please ensure this is set to {@link
+     * #LOG_LEVEL_ERROR} or {@link #LOG_LEVEL_NONE} before deploying your app to ensure no sensitive
+     * information is logged. The levels are:
+     *
      * <ul>
-     * <li>{@link #LOG_LEVEL_VERBOSE}</li>
-     * <li>{@link #LOG_LEVEL_DEBUG}</li>
-     * <li>{@link #LOG_LEVEL_INFO}</li>
-     * <li>{@link #LOG_LEVEL_WARNING}</li>
-     * <li>{@link #LOG_LEVEL_ERROR}</li>
-     * <li>{@link #LOG_LEVEL_NONE}</li>
+     *   <li>{@link #LOG_LEVEL_VERBOSE}
+     *   <li>{@link #LOG_LEVEL_DEBUG}
+     *   <li>{@link #LOG_LEVEL_INFO}
+     *   <li>{@link #LOG_LEVEL_WARNING}
+     *   <li>{@link #LOG_LEVEL_ERROR}
+     *   <li>{@link #LOG_LEVEL_NONE}
      * </ul>
      *
      * @param logLevel The level of logcat logging that Parse should do.
@@ -492,50 +568,63 @@ public class Parse {
         PLog.setLogLevel(logLevel);
     }
 
-    //endregion
+    // endregion
 
     interface ParseCallbacks {
         void onParseInitialized();
     }
 
-    /**
-     * Represents an opaque configuration for the {@code Parse} SDK configuration.
-     */
+    /** Represents an opaque configuration for the {@code Parse} SDK configuration. */
     public static final class Configuration {
         final Context context;
         final String applicationId;
         final String clientKey;
         final String server;
         final boolean localDataStoreEnabled;
+        final boolean allowCustomObjectId;
         final OkHttpClient.Builder clientBuilder;
         final int maxRetries;
+        final int maxKeyValueCacheBytes;
+        final int maxKeyValueCacheFiles;
+
         private Configuration(Builder builder) {
             this.context = builder.context;
             this.applicationId = builder.applicationId;
             this.clientKey = builder.clientKey;
             this.server = builder.server;
             this.localDataStoreEnabled = builder.localDataStoreEnabled;
+            this.allowCustomObjectId = builder.allowCustomObjectId;
             this.clientBuilder = builder.clientBuilder;
             this.maxRetries = builder.maxRetries;
+            this.maxKeyValueCacheBytes = builder.maxKeyValueCacheBytes;
+            this.maxKeyValueCacheFiles = builder.maxKeyValueCacheFiles;
         }
 
-        /**
-         * Allows for simple constructing of a {@code Configuration} object.
-         */
+        /** Allows for simple constructing of a {@code Configuration} object. */
         public static final class Builder {
-            private Context context;
+            /** The default maximum number of bytes to use for the Parse cache on disk. */
+            public static final int DEFAULT_MAX_KEY_VALUE_CACHE_BYTES =
+                    ParseKeyValueCache.DEFAULT_MAX_KEY_VALUE_CACHE_BYTES;
+            /** The default maximum number of files to store in the Parse cache on disk. */
+            public static final int DEFAULT_MAX_KEY_VALUE_CACHE_FILES =
+                    ParseKeyValueCache.DEFAULT_MAX_KEY_VALUE_CACHE_FILES;
+
+            private final Context context;
             private String applicationId;
             private String clientKey;
             private String server;
             private boolean localDataStoreEnabled;
+            private boolean allowCustomObjectId;
             private OkHttpClient.Builder clientBuilder;
             private int maxRetries = DEFAULT_MAX_RETRIES;
+            private int maxKeyValueCacheBytes = DEFAULT_MAX_KEY_VALUE_CACHE_BYTES;
+            private int maxKeyValueCacheFiles = DEFAULT_MAX_KEY_VALUE_CACHE_FILES;
 
             /**
              * Initialize a bulider with a given context.
-             * <p>
-             * This context will then be passed through to the rest of the Parse SDK for use during
-             * initialization.
+             *
+             * <p>This context will then be passed through to the rest of the Parse SDK for use
+             * during initialization.
              *
              * @param context The active {@link Context} for your application. Cannot be null.
              */
@@ -572,20 +661,13 @@ public class Parse {
              * @return The same builder, for easy chaining.
              */
             public Builder server(String server) {
-
-                // Add an extra trailing slash so that Parse REST commands include
-                // the path as part of the server URL (i.e. http://api.myhost.com/parse)
-                if (server != null && !server.endsWith("/")) {
-                    server = server + "/";
-                }
-
-                this.server = server;
+                this.server = validateServerUrl(server);
                 return this;
             }
 
             /**
-             * Enable pinning in your application. This must be called before your application can use
-             * pinning.
+             * Enable pinning in your application. This must be called before your application can
+             * use pinning.
              *
              * @return The same builder, for easy chaining.
              */
@@ -600,8 +682,23 @@ public class Parse {
             }
 
             /**
+             * Allow to set a custom objectId for ParseObjects.
+             *
+             * @return The same builder, for easy chaining.
+             */
+            public Builder allowCustomObjectId() {
+                return this.setAllowCustomObjectId(true);
+            }
+
+            private Builder setAllowCustomObjectId(boolean enabled) {
+                allowCustomObjectId = enabled;
+                return this;
+            }
+
+            /**
              * Set the {@link okhttp3.OkHttpClient.Builder} to use when communicating with the Parse
              * REST API
+             *
              * <p>
              *
              * @param builder The client builder, which will be modified for compatibility
@@ -614,6 +711,7 @@ public class Parse {
 
             /**
              * Set the max number of times to retry Parse operations before deeming them a failure
+             *
              * <p>
              *
              * @param maxRetries The maximum number of times to retry. <=0 to never retry commands
@@ -621,6 +719,36 @@ public class Parse {
              */
             public Builder maxRetries(int maxRetries) {
                 this.maxRetries = maxRetries;
+                return this;
+            }
+
+            /**
+             * Set the maximum amount of bytes to use for the Parse cache on disk. Defaults to
+             * {@link Builder#DEFAULT_MAX_KEY_VALUE_CACHE_BYTES}.
+             *
+             * @param maxKeyValueCacheBytes The maximum number of bytes to use for the cache.
+             * @return The same builder, for easy chaining.
+             */
+            public Builder maxKeyValueCacheBytes(int maxKeyValueCacheBytes) {
+                if (maxKeyValueCacheBytes < 0) {
+                    throw new IllegalArgumentException("maxKeyValueCacheBytes must be >= 0");
+                }
+                this.maxKeyValueCacheBytes = maxKeyValueCacheBytes;
+                return this;
+            }
+
+            /**
+             * Set the maximum number of files to store in the Parse cache on disk. Defaults to
+             * {@link Builder#DEFAULT_MAX_KEY_VALUE_CACHE_FILES}.
+             *
+             * @param maxKeyValueCacheFiles The maximum number of files to store in the cache.
+             * @return The same builder, for easy chaining.
+             */
+            public Builder maxKeyValueCacheFiles(int maxKeyValueCacheFiles) {
+                if (maxKeyValueCacheFiles < 0) {
+                    throw new IllegalArgumentException("maxKeyValueCacheFiles must be >= 0");
+                }
+                this.maxKeyValueCacheFiles = maxKeyValueCacheFiles;
                 return this;
             }
 

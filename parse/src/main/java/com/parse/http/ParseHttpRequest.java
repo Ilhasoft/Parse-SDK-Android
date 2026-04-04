@@ -13,8 +13,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * The http request we send to parse server. Instances of this class are not immutable. The
- * request body may be consumed only once. The other fields are immutable.
+ * The http request we send to parse server. Instances of this class are not immutable. The request
+ * body may be consumed only once. The other fields are immutable.
  */
 public final class ParseHttpRequest {
 
@@ -22,6 +22,7 @@ public final class ParseHttpRequest {
     private final Method method;
     private final Map<String, String> headers;
     private final ParseHttpBody body;
+
     private ParseHttpRequest(Builder builder) {
         this.url = builder.url;
         this.method = builder.method;
@@ -75,16 +76,16 @@ public final class ParseHttpRequest {
         return body;
     }
 
-    /**
-     * The {@code ParseHttpRequest} method type.
-     */
+    /** The {@code ParseHttpRequest} method type. */
     public enum Method {
-
-        GET, POST, PUT, DELETE;
+        GET,
+        POST,
+        PUT,
+        DELETE;
 
         /**
-         * Creates a {@code Method} from the given string. Valid stings are {@code GET}, {@code POST},
-         * {@code PUT} and {@code DELETE}.
+         * Creates a {@code Method} from the given string. Valid stings are {@code GET}, {@code
+         * POST}, {@code PUT} and {@code DELETE}.
          *
          * @param string The string value of this {@code Method}.
          * @return A {@code Method} based on the given string.
@@ -138,9 +139,7 @@ public final class ParseHttpRequest {
         }
     }
 
-    /**
-     * Builder of {@code ParseHttpRequest}.
-     */
+    /** Builder of {@code ParseHttpRequest}. */
     public static final class Builder {
 
         private String url;
@@ -148,9 +147,7 @@ public final class ParseHttpRequest {
         private Map<String, String> headers;
         private ParseHttpBody body;
 
-        /**
-         * Creates an empty {@code Builder}.
-         */
+        /** Creates an empty {@code Builder}. */
         public Builder() {
             this.headers = new HashMap<>();
         }
@@ -203,7 +200,7 @@ public final class ParseHttpRequest {
         /**
          * Adds a header to this {@code Builder}.
          *
-         * @param name  The name of the header.
+         * @param name The name of the header.
          * @param value The value of the header.
          * @return This {@code Builder}.
          */

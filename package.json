@@ -1,0 +1,16 @@
+{
+  "name": "parse-sdk-android",
+  "version": "4.4.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/parse-community/Parse-SDK-Android.git"
+  },
+  "devDependencies": {
+    "semantic-release": "19.0.3",
+    "@semantic-release/changelog": "6.0.0",
+    "@semantic-release/commit-analyzer": "9.0.2",
+    "@semantic-release/git": "10.0.1",
+    "@semantic-release/release-notes-generator": "10.0.3",
+    "gradle-semantic-release-plugin": "1.7.3"
+  }
+}

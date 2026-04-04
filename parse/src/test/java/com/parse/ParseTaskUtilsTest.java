@@ -8,20 +8,17 @@
  */
 package com.parse;
 
-import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.concurrent.Callable;
-
-import bolts.AggregateException;
-import bolts.Task;
-
 import static org.junit.Assert.assertTrue;
+
+import com.parse.boltsinternal.AggregateException;
+import com.parse.boltsinternal.Task;
+import java.util.ArrayList;
+import org.junit.Test;
 
 public class ParseTaskUtilsTest {
     /**
-     * Verifies {@link bolts.AggregateException} gets wrapped with {@link ParseException} when thrown from
-     * {@link com.parse.ParseTaskUtils#wait(bolts.Task)}.
+     * Verifies {@link AggregateException} gets wrapped with {@link ParseException} when thrown from
+     * {@link com.parse.ParseTaskUtils#wait(Task)}.
      */
     @Test
     public void testWaitForTaskWrapsAggregateExceptionAsParseException() {
@@ -30,16 +27,15 @@ public class ParseTaskUtilsTest {
         final ArrayList<Task<Void>> tasks = new ArrayList<>();
         for (int i = 0; i < 20; i++) {
             final int number = i;
-            Task<Void> task = Task.callInBackground(new Callable<Void>() {
-                @Override
-                public Void call() throws Exception {
-                    Thread.sleep((long) (Math.random() * 100));
-                    if (number == 10 || number == 11) {
-                        throw error;
-                    }
-                    return null;
-                }
-            });
+            Task<Void> task =
+                    Task.callInBackground(
+                            () -> {
+                                Thread.sleep((long) (Math.random() * 100));
+                                if (number == 10 || number == 11) {
+                                    throw error;
+                                }
+                                return null;
+                            });
             tasks.add(task);
         }
 

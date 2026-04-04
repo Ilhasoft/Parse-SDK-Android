@@ -8,12 +8,9 @@
  */
 package com.parse;
 
+import com.parse.boltsinternal.Task;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.Callable;
-
-import bolts.Continuation;
-import bolts.Task;
 
 class ParseAuthenticationManager {
 
@@ -32,8 +29,11 @@ class ParseAuthenticationManager {
 
         synchronized (lock) {
             if (this.callbacks.containsKey(authType)) {
-                throw new IllegalStateException("Callback already registered for <" + authType + ">: "
-                        + this.callbacks.get(authType));
+                throw new IllegalStateException(
+                        "Callback already registered for <"
+                                + authType
+                                + ">: "
+                                + this.callbacks.get(authType));
             }
             this.callbacks.put(authType, callback);
         }
@@ -44,19 +44,20 @@ class ParseAuthenticationManager {
         }
 
         // Synchronize the current user with the auth callback.
-        controller.getAsync(false).onSuccessTask(new Continuation<ParseUser, Task<Void>>() {
-            @Override
-            public Task<Void> then(Task<ParseUser> task) {
-                ParseUser user = task.getResult();
-                if (user != null) {
-                    return user.synchronizeAuthDataAsync(authType);
-                }
-                return null;
-            }
-        });
+        controller
+                .getAsync(false)
+                .onSuccessTask(
+                        task -> {
+                            ParseUser user = task.getResult();
+                            if (user != null) {
+                                return user.synchronizeAuthDataAsync(authType);
+                            }
+                            return null;
+                        });
     }
 
-    public Task<Boolean> restoreAuthenticationAsync(String authType, final Map<String, String> authData) {
+    public Task<Boolean> restoreAuthenticationAsync(
+            String authType, final Map<String, String> authData) {
         final AuthenticationCallback callback;
         synchronized (lock) {
             callback = this.callbacks.get(authType);
@@ -64,12 +65,7 @@ class ParseAuthenticationManager {
         if (callback == null) {
             return Task.forResult(true);
         }
-        return Task.call(new Callable<Boolean>() {
-            @Override
-            public Boolean call() {
-                return callback.onRestore(authData);
-            }
-        }, ParseExecutors.io());
+        return Task.call(() -> callback.onRestore(authData), ParseExecutors.io());
     }
 
     public Task<Void> deauthenticateAsync(String authType) {
@@ -78,13 +74,12 @@ class ParseAuthenticationManager {
             callback = this.callbacks.get(authType);
         }
         if (callback != null) {
-            return Task.call(new Callable<Void>() {
-                @Override
-                public Void call() {
-                    callback.onRestore(null);
-                    return null;
-                }
-            }, ParseExecutors.io());
+            return Task.call(
+                    () -> {
+                        callback.onRestore(null);
+                        return null;
+                    },
+                    ParseExecutors.io());
         }
         return Task.forResult(null);
     }

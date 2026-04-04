@@ -8,19 +8,16 @@
  */
 package com.parse;
 
+import com.parse.boltsinternal.Task;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ScheduledExecutorService;
-
-import bolts.Task;
 
 class ParseExecutors {
 
     private static final Object SCHEDULED_EXECUTOR_LOCK = new Object();
     private static ScheduledExecutorService scheduledExecutor;
 
-    /**
-     * Long running operations should NOT be put onto SCHEDULED_EXECUTOR.
-     */
+    /** Long running operations should NOT be put onto SCHEDULED_EXECUTOR. */
     /* package */
     static ScheduledExecutorService scheduled() {
         synchronized (SCHEDULED_EXECUTOR_LOCK) {
